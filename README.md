@@ -42,7 +42,7 @@ After installing the necessary dependencies, clone the repository (don't forget 
 
 ```bash
 git clone --recursive https://github.com/sounakban/gpudrive-CoDec.git
-cd gpudrive
+cd gpudrive-CoDec
 ```
 
 Then, there are two options for building the simulator:
