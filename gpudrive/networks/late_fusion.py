@@ -207,7 +207,7 @@ class NeuralNet(
 
         action, logprob, entropy = sample_logits(logits, action, deterministic)
 
-        return action, logprob, entropy, value
+        return action, logprob, entropy, value, logits
 
     def unpack_obs(self, obs_flat):
         """
