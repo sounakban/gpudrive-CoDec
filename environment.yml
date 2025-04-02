@@ -71,3 +71,7 @@ dependencies:
       - pufferlib
       - huggingface_hub
       - jaxlib
+      - jax
+      - pytorch-lightning
+      - waymax
+      - git+https://github.com/waymo-research/waymax.git@main#egg=waymo-waymax
