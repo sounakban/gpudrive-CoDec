@@ -33,7 +33,7 @@ config = load_config("examples/experimental/config/reliable_agents_params")
 # print(config)
 
 max_agents = config.max_controlled_agents
-num_envs = 2
+num_envs = 20
 device = "cpu" # cpu just because we're in a notebook
 # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -57,9 +57,9 @@ sim_agent.obs_dim
 
 # Create data loader
 train_loader = SceneDataLoader(
-    root='data/processed/examples',
+    root='data/processed/training',
     batch_size=num_envs,
-    dataset_size=100,
+    dataset_size=1000,
     sample_with_replacement=False,
 )
 
