@@ -44,12 +44,12 @@ ENV MADRONA_MWGPU_KERNEL_CACHE=./gpudrive_cache
 WORKDIR /gpudrive-CoDec
 RUN mkdir build
 WORKDIR /gpudrive-CoDec/build
-RUN cmake .. -DCMAKE_BUILD_TYPE=Release
-RUN ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
-RUN LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs/:$LD_LIBRARY_PATH make -j
-RUN rm /usr/local/cuda/lib64/stubs/libcuda.so.1
-WORKDIR /gpudrive-CoDec
+# RUN cmake .. -DCMAKE_BUILD_TYPE=Release
+# RUN ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
+# RUN LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs/:$LD_LIBRARY_PATH make -j
+# RUN rm /usr/local/cuda/lib64/stubs/libcuda.so.1
 
+WORKDIR /gpudrive-CoDec
 RUN pip3 install -e .[pufferlib]
 
 CMD ["/bin/bash"]
