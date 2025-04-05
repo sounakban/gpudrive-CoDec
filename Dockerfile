@@ -38,19 +38,19 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 RUN apt-get remove -y cmake && pip3 install --upgrade cmake
 
 # Clone the gpudrive repository
-RUN git clone --recursive https://github.com/Emerge-Lab/gpudrive.git --branch dev-packaged
+RUN git clone --recursive https://github.com/sounakban/gpudrive-CoDec.git --branch main
 ENV MADRONA_MWGPU_KERNEL_CACHE=./gpudrive_cache
 
-WORKDIR /gpudrive
+WORKDIR /gpudrive-CoDec
 RUN mkdir build
-WORKDIR /gpudrive/build
+WORKDIR /gpudrive-CoDec/build
 RUN cmake .. -DCMAKE_BUILD_TYPE=Release
 RUN ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
 RUN LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs/:$LD_LIBRARY_PATH make -j
 RUN rm /usr/local/cuda/lib64/stubs/libcuda.so.1
-WORKDIR /gpudrive
+WORKDIR /gpudrive-CoDec
 
 RUN pip3 install -e .[pufferlib]
 
 CMD ["/bin/bash"]
-LABEL org.opencontainers.image.source=https://github.com/Emerge-Lab/gpudrive
+LABEL org.opencontainers.image.source=https://github.com/sounakban/gpudrive-CoDec.git
