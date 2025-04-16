@@ -1487,6 +1487,7 @@ class GPUDriveTorchEnv(GPUDriveGymEnv):
 class GPUDriveConstrualEnv(GPUDriveTorchEnv):
     """Torch Gym (Construed) Environment that interfaces with the GPU Drive simulator. Rebase"""
 
+
     def get_obs(self, mask=None, partner_mask=None):
         """Get observation: Combine different types of environment information into a single tensor.
 
@@ -1508,6 +1509,7 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
         )
 
         return obs
+    
 
     def _get_partner_obs(self, mask=None, partner_mask=None):
         """Get partner observations."""
@@ -1550,6 +1552,8 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
                     result[:, :, partner_mask] = masked_values
                 elif len(partner_mask.shape) == 3:
                     result[partner_mask] = masked_values
+                    # print(np.where(partner_mask[0][0] == True))   # DEBUG: get locations to be masked
+                    # print(torch.where((result == masked_values).all(dim=3))[-1])   # DEBUG: get location of masked values
                 else:
                     raise ValueError("Partner mask needs to be either 1D (num_obs), when using same mask everywhere. \
                                      Or 3D (num_envs,num_veh,num_obs), when using specific masks for specific \
@@ -1557,8 +1561,6 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
             result = result.flatten(start_dim=2)
         
         return result
-
-        
 
 
     def get_structured_obs(self, mask=None, partner_mask=None):
@@ -1620,6 +1622,15 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
 
         return structured_obs
 
+
+    def get_traj_ground_truth(self):
+        log_trajectory = LogTrajectory.from_tensor(
+            self.sim.expert_trajectory_tensor(),
+            self.num_worlds,
+            self.max_agent_count,
+            backend=self.backend,
+        )        
+        return log_trajectory
 
 
 

@@ -151,7 +151,7 @@ def simulate_construals(env: GPUDriveTorchEnv,
     for const_num in range(math.comb(observed_agents_count,construal_size)):
         # |Repeat rollout for each construal
 
-        next_obs = env.reset()
+        # next_obs = env.reset()
         # print("Observation shape: ", next_obs.shape)
         frames = {f"env_{i}-constr_{const_num}": [] for i in range(total_envs)}
 
@@ -165,7 +165,7 @@ def simulate_construals(env: GPUDriveTorchEnv,
         for mask_info in construal_masks:
             curr_indices, mask = mask_info
             curr_masks = [list(mask) for _ in range(len(mask))]     # Create multiple copies of the mask, one for each vehicle
-            [msk.pop(i) for i, msk in enumerate(curr_masks)]        # Remove entry in the mask that corresponds to the vehicle
+            [msk.pop(i) for i, msk in enumerate(curr_masks)]        # Remove ego-vehicle entry from the mask
             tmp.append(curr_masks)
             mask_indices += (tuple(curr_indices),)
         construal_masks = tmp
@@ -173,7 +173,8 @@ def simulate_construals(env: GPUDriveTorchEnv,
         curr_samples = []   # Keep track of reards
         for sample_num in range(sample_size):
             print("\tsample ", sample_num)
-            next_obs = env.reset()
+            _ = env.reset()
+            next_obs = env.get_obs(partner_mask=construal_masks)
             for time_step in range(env.episode_len):
                 #2# |Roll out policy for a specific construal
                 print(f"\r\t\tStep: {time_step}", end="", flush=True)

@@ -37,6 +37,7 @@ import mediapy
 from huggingface_hub import PyTorchModelHubMixin
 from huggingface_hub import ModelCard
 from gpudrive.networks.late_fusion import NeuralNet
+from tqdm import tqdm
 
 from gpudrive.env.config import EnvConfig
 from gpudrive.env.env_torch import GPUDriveTorchEnv, GPUDriveConstrualEnv
@@ -63,10 +64,10 @@ dataset_path = 'data/processed/construal'
 
 # |Set simulator config
 max_agents = config.max_controlled_agents   # Get total vehicle count
-num_parallel_envs = 1
-total_envs = 1
-device = "cpu" # cpu just because we're in a notebook
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+num_parallel_envs = 7
+total_envs = 25
+# device = "cpu" # cpu just because we're in a notebook
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # |Set construal config
 construal_size = 1
@@ -143,41 +144,51 @@ sim_agent = NeuralNet.from_pretrained("daphne-cornelisse/policy_S10_000_02_27")
 ################### MAIN LOGIC ###################
 ##################################################
 
-# |Get moving vehicle information
-moving_veh_mask = GPUDriveConstrualEnv(
-    config=env_config,
-    data_loader=train_loader,
-    max_cont_agents=max_agents,
-    device=device,
-).cont_agent_mask
-
-moving_veh_indices = [tuple([i for i, val in enumerate(mask) if val]) for mask in moving_veh_mask]
-print("Indices of all moving vehicles (by scene): ", moving_veh_indices)
-control_mask = env.cont_agent_mask
+# |Create multi-agent environment to get information about moving vehicles
+env_multi_agent = GPUDriveConstrualEnv(
+                    config=env_config,
+                    data_loader=train_loader,
+                    max_cont_agents=max_agents,
+                    device=device,
+                    )
 
 
+if __name__ == "__main__":
 
+    construal_values = {}
+    all_obs = {}
 
-# |Simulate on Construals
-results = {}
-construal_values, all_obs = simulate_construals(env = env, 
-                                                    observed_agents_count = observed_agents_count,
-                                                    construal_size= construal_size,
-                                                    total_envs = total_envs,
-                                                    max_agents = max_agents,
-                                                    moving_veh_indices = moving_veh_indices,
-                                                    sample_size = sample_size,
-                                                    sim_agent = sim_agent,
-                                                    control_mask = control_mask,
-                                                    device = device)
+    # |Loop through all batches
+    for batch in tqdm(train_loader, desc=f"Processing Waymo batches",
+        total=len(train_loader), colour="blue"):
+        # |BATCHING LOGIC: https://github.com/Emerge-Lab/gpudrive/blob/bd618895acde90d8c7d880b32d87942efe42e21d/examples/experimental/eval_utils.py#L316
+        # |Update simulator with the new batch of data
+        env.swap_data_batch(batch)
 
-with open(out_dir+"construal_vals_"+str(datetime.now())+".txt", 'w') as file:
-    file.write(str(construal_values))
-with open(out_dir+"all_obs_"+str(datetime.now())+".txt", 'w') as file:
-    file.write(str(all_obs))
+        # |Get moving vehicle information
+        env_multi_agent.swap_data_batch(batch)
+        moving_veh_mask = env_multi_agent.cont_agent_mask
+        moving_veh_indices = [tuple([i for i, val in enumerate(mask) if val]) for mask in moving_veh_mask]
+        print("Indices of all moving vehicles (by scene): ", moving_veh_indices)
+        control_mask = env.cont_agent_mask
 
+        # |Simulate on Construals
+        construal_values_, all_obs_ = simulate_construals(env = env, 
+                                                            observed_agents_count = observed_agents_count,
+                                                            construal_size= construal_size,
+                                                            total_envs = num_parallel_envs,
+                                                            max_agents = max_agents,
+                                                            moving_veh_indices = moving_veh_indices,
+                                                            sample_size = sample_size,
+                                                            sim_agent = sim_agent,
+                                                            control_mask = control_mask,
+                                                            device = device)
+        construal_values.update(construal_values_)
+        all_obs.update(all_obs_)
 
-# with open("results_"+str(datetime.now()), 'w') as file:
-#         json.dump(results, file, indent=4)
+    with open(out_dir+"construal_vals_"+str(datetime.now())+".txt", 'w') as file:
+        file.write(str(construal_values))
+    with open(out_dir+"all_obs_"+str(datetime.now())+".txt", 'w') as file:
+        file.write(str(all_obs))
 
-env.close()
+    env.close()
