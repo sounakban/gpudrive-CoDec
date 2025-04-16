@@ -1,5 +1,6 @@
 """Torch Gym Environment that interfaces with the GPU Drive simulator."""
 
+from csv import Error
 from gymnasium.spaces import Box, Discrete, Tuple
 import numpy as np
 import torch
@@ -1539,12 +1540,85 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
                 dim=-1,
             )
             if partner_mask:
-                masked_values = torch.tensor([0]*result.shape[-1], dtype=result.dtype)
-                result[:, :, partner_mask] = masked_values
+                try:
+                    partner_mask = np.array(partner_mask)
+                except Error as e:
+                    raise ValueError("Cannot convert partner mask to numpy array because:\n"+e)
+                
+                masked_values = torch.tensor([0,]*result.shape[-1], dtype=result.dtype)
+                if len(partner_mask.shape) == 1:
+                    result[:, :, partner_mask] = masked_values
+                elif len(partner_mask.shape) == 3:
+                    result[partner_mask] = masked_values
+                else:
+                    raise ValueError("Partner mask needs to be either 1D (num_obs), when using same mask everywhere. \
+                                     Or 3D (num_envs,num_veh,num_obs), when using specific masks for specific \
+                                     vehicles in specific environments)")
             result = result.flatten(start_dim=2)
         
         return result
 
+        
+
+
+    def get_structured_obs(self, mask=None, partner_mask=None):
+        """Get structured observations."""
+        structured_obs = {}
+
+        # |Get ego details
+        agent_state = GlobalEgoState.from_tensor(
+            self.sim.absolute_self_observation_tensor(),
+            self.backend,
+        )
+
+        #2# |Process each world
+        ego_pos = []
+        for w in range(self.num_worlds):
+            # Get controlled agent indices for this world
+            valid_mask = self.cont_agent_mask[w]
+            world_agent_indices = torch.where(valid_mask)[0]
+
+            if len(world_agent_indices) == 0:
+                continue
+
+            # Extract ego positions
+            ego_pos_x = agent_state.pos_x[w]
+            ego_pos_y = agent_state.pos_y[w]
+
+            ego_pos.append((ego_pos_x, ego_pos_y))
+        structured_obs['pos_ego'] = ego_pos
+
+
+        # | Get partner details
+        partner_obs = PartnerObs.from_tensor(
+            partner_obs_tensor=self.sim.partner_observations_tensor(),
+            backend=self.backend,
+            device=self.device,
+            mask=mask,
+        )        
+        partner_obs.rel_pos_x,
+        partner_obs.rel_pos_y,
+
+
+        # | Get road details
+        roadgraph = LocalRoadGraphPoints.from_tensor(
+            local_roadgraph_tensor=self.sim.agent_roadmap_tensor(),
+            backend=self.backend,
+            device=self.device,
+            mask=mask,
+        )
+
+        # print("Roadgraph: ", roadgraph.x.shape, roadgraph.type.shape, roadgraph.type)
+        roadgraph.x.unsqueeze(-1),
+        roadgraph.y.unsqueeze(-1),
+        roadgraph.segment_length.unsqueeze(-1),
+        roadgraph.segment_width.unsqueeze(-1),
+        roadgraph.segment_height.unsqueeze(-1),
+        roadgraph.orientation.unsqueeze(-1),
+        roadgraph.type,
+        # print("Roadgraph_: ", roadgraph.x.shape, roadgraph.type.shape, roadgraph.type)
+
+        return structured_obs
 
 
 
