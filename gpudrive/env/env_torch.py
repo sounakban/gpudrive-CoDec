@@ -1631,6 +1631,43 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
             backend=self.backend,
         )        
         return log_trajectory
+    
+
+    def get_partner_obj(self, mask=None):
+        """Get partner object. Can be useful for IDs"""
+
+        if not self.config.partner_obs:
+            return torch.Tensor().to(self.device)
+
+        return PartnerObs.from_tensor(
+            partner_obs_tensor=self.sim.partner_observations_tensor(),
+            backend=self.backend,
+            device=self.device,
+            mask=mask,
+        )
+        # USAGE: partner_info = get_partner_obj.ids
+    
+
+    def get_traj_obj(self, mask=None):
+        """Get trajectory validity."""
+
+        if not self.config.partner_obs:
+            return torch.Tensor().to(self.device)
+
+        return LogTrajectory.from_tensor(
+            self.sim.expert_trajectory_tensor(),
+            self.num_worlds,
+            self.max_agent_count,
+            backend=self.backend,
+        )
+
+        # For trajectory validity info
+        valids = raw_logs[:, :, 5 * TRAJ_LEN:6 * TRAJ_LEN].view(
+            num_worlds, max_agents, TRAJ_LEN, -1
+        ).to(torch.int32)
+
+        return valids
+
 
 
 
