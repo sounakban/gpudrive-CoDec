@@ -148,10 +148,10 @@ def run_policy(env: GPUDriveTorchEnv,
     
     if construal_masks:
         for env_num in range(total_envs):
-            frames[f"env_{env_num}-constr_{const_num}-sample_{sample_num}"].append(img_from_fig(sim_states[sample_num])) 
+            frames[f"env_{env_num}-constr_{const_num}-sample_{sample_num}"].append(img_from_fig(sim_states[env_num])) 
     else:
         for env_num in range(total_envs):
-            frames[f"env_{env_num}-sample_{sample_num}"].append(img_from_fig(sim_states[sample_num])) 
+            frames[f"env_{env_num}-sample_{sample_num}"].append(img_from_fig(sim_states[env_num])) 
 
     next_obs = env.get_obs(partner_mask=construal_masks)
     reward = env.get_rewards()
@@ -222,10 +222,10 @@ def simulate_construal_policies(env: GPUDriveTorchEnv,
             mask_indices += (tuple(curr_indices),)
         construal_masks = tmp
         
+        frames = {f"env_{env_num}-constr_{const_num}-sample_{sample_num}": [] for sample_num in range(sample_size) for env_num in range(total_envs)}
         curr_samples = []   # Keep track of reards
         for sample_num in range(sample_size):
             print("\tsample ", sample_num)
-            frames = {f"env_{env_num}-constr_{const_num}-sample_{sample_num}": [] for env_num in range(total_envs)}
             
             _ = env.reset()
             next_obs = env.get_obs(partner_mask=construal_masks)

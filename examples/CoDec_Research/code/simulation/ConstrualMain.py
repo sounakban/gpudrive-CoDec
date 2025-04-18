@@ -70,7 +70,7 @@ max_agents = config.max_controlled_agents   # Get total vehicle count
 num_parallel_envs = 7
 total_envs = 25
 device = "cpu" # cpu just because we're in a notebook
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # |Set construal config
 construal_size = 1
