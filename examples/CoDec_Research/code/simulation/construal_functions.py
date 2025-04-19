@@ -268,29 +268,37 @@ def simulate_construal_policies(env: GPUDriveTorchEnv,
                 
             curr_samples.append(reward[control_mask].tolist())
 
-        for env_num in range(total_envs):
+        #2# Convert from tensor to list for storage
+        for env_num, env_name in enumerate(env.data_batch):
             for sample_num in range(sample_size):
-                #2# Convert from tensor to list for storage
                 all_obs[env_name][mask_indices[env_num]][sample_num] = all_obs[env_name][mask_indices[env_num]][sample_num].tolist()
 
-        #3# |Calculate value (average reward) for each construal
+        #2# |Calculate value (average reward) for each construal
         curr_vals = [sum(x)/sample_size for x in zip(*curr_samples)]
         for env_num, val in enumerate(curr_vals):
             construal_values[env.data_batch[env_num]][mask_indices[env_num]] = val
         print("Processed masks: ", mask_indices, ", with values:", curr_vals)
 
         if all([mask == () for mask in mask_indices]):
-            #3# |Break loop once list of construals for all scenarios have been exhausted
+            #2# |Break loop once list of construals for all scenarios have been exhausted
             break
 
         #2# |Save animations
         # mediapy.set_show_save_dir('./sim_vids')
         # mediapy.show_videos(frames, fps=15, width=500, height=500, columns=2, codec='gif')
 
+    #2# Extract ground-truth data
+    ground_truth = {'traj': {}, 'traj_valids': {}, 'contr_veh_indices': {}}
+    for env_num, env_name in enumerate(env.data_batch):
+        ground_truth['traj'][env_name] = env.get_data_log_obj().pos_xy[env_num].tolist()
+        ground_truth['traj_valids'][env_name] = env.get_data_log_obj().valids[env_num].tolist()
+        ground_truth['contr_veh_indices'][env_name] = torch.where(control_mask[env_num])[0].tolist()
+
+
     # print("\nExpected utility by contrual: ", construal_values)
     
     # TODO: Extract valid flags, and ground truth trajectories
-    return (construal_values, all_obs)
+    return (construal_values, all_obs, ground_truth)
 
 
 
@@ -370,12 +378,20 @@ def simulate_full_policies(env: GPUDriveTorchEnv,
             
         curr_samples.append(reward[control_mask].tolist())
 
+    #2# Convert observations from tensor to list for storage
     for env_num in range(total_envs):
-        for sample_num in range(sample_size):
-            #2# Convert from tensor to list for storage
+        env_name = env.data_batch[env_num]
+        for sample_num in range(sample_size):            
             all_obs[env_name][sample_num] = all_obs[env_name][sample_num].tolist()
 
-    #3# |Calculate value (average reward) for each construal
+    #2# Extract ground-truth data
+    ground_truth = {'traj': {}, 'traj_valids': {}, 'contr_veh_indices': {}}
+    for env_num in range(total_envs):
+        ground_truth['traj'][env.data_batch[env_num]] = env.get_data_log_obj().pos_xy[env_num].tolist()
+        ground_truth['traj_valids'][env.data_batch[env_num]] = env.get_data_log_obj().valids[env_num].tolist()
+        ground_truth['contr_veh_indices'][env.data_batch[env_num]] = torch.where(control_mask[env_num])[0].tolist()
+
+    #2# |Calculate value (average reward) for each construal
     curr_vals = [sum(x)/sample_size for x in zip(*curr_samples)]
     for env_num, val in enumerate(curr_vals):
         model_values[env.data_batch[env_num]] = val
@@ -385,4 +401,4 @@ def simulate_full_policies(env: GPUDriveTorchEnv,
     # mediapy.show_videos(frames, fps=15, width=500, height=500, columns=2, codec='gif')
 
     # print("\nExpected utility by contrual: ", construal_values)
-    return (model_values, all_obs)
+    return (model_values, all_obs, ground_truth)

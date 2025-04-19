@@ -67,15 +67,15 @@ dataset_path = 'data/processed/construal'
 
 # |Set simulator config
 max_agents = config.max_controlled_agents   # Get total vehicle count
-num_parallel_envs = 7
-total_envs = 25
+num_parallel_envs = 1
+total_envs = 1
 device = "cpu" # cpu just because we're in a notebook
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # |Set construal config
 construal_size = 1
 observed_agents_count = max_agents - 1      # Agents observed except self (used for vector sizes)
-sample_size = 10                            # Number of samples to calculate expected utility of a construal
+sample_size = 1                             # Number of samples to calculate expected utility of a construal
 
 # |Other changes to variables
 config.max_controlled_agents = 1    # Control only the first vehicle in the environment
@@ -158,8 +158,9 @@ env_multi_agent = GPUDriveConstrualEnv(
 
 if __name__ == "__main__":
 
-    construal_values = {}
-    all_obs = {}
+    construal_values = {"dict_structure": '{scene_name: {construal_index: value}}'}
+    all_obs = {"dict_structure": '{scene_name: {construal_index: {sample_num: 3Dmatrix[vehicles,timestep,coord]}}}'}
+    ground_truth = {"dict_structure": '{"traj": {scene_name: 3Dmatrix[vehicles,timestep,coord]}, "traj_valids": {scene_name: 3Dmatrix[vehicles,timestep,bool]}, "contr_veh_indices": {scene_name: list[controlled_vehicles]} }'}
 
     # |Loop through all batches
     for batch in tqdm(train_loader, desc=f"Processing Waymo batches",
@@ -176,7 +177,7 @@ if __name__ == "__main__":
         control_mask = env.cont_agent_mask
 
         # |Simulate on Construals
-        construal_values_, all_obs_ = simulate_construal_policies(env = env, 
+        construal_values_, all_obs_, ground_truth_ = simulate_construal_policies(env = env, 
                                                             observed_agents_count = observed_agents_count,
                                                             construal_size= construal_size,
                                                             total_envs = num_parallel_envs,
@@ -188,14 +189,17 @@ if __name__ == "__main__":
                                                             device = device)
         construal_values.update(construal_values_)
         all_obs.update(all_obs_)
+        ground_truth.update(ground_truth_)
 
     with open(out_dir+"construal_vals_"+str(datetime.now())+".txt", 'w') as file:
         file.write(str(construal_values))
     with open(out_dir+"all_obs_"+str(datetime.now())+".txt", 'w') as file:
         file.write(str(all_obs))
+    with open(out_dir+"ground_truth_"+str(datetime.now())+".txt", 'w') as file:
+        file.write(str(ground_truth))
 
     
     execution_time = time.perf_counter() - start_time
-    print(f"Execution time: {execution_time:.4f} seconds")
+    print(f"Execution time: {execution_time/60} minutes and {execution_time%60:.1f} seconds")
 
     env.close()

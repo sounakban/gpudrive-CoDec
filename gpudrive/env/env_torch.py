@@ -1564,7 +1564,7 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
 
 
     def get_structured_obs(self, mask=None, partner_mask=None):
-        """Get structured observations."""
+        """Get structured observations. 'pos_ego' returns the current positions of all vehicles."""
         structured_obs = {}
 
         # |Get ego details
@@ -1591,46 +1591,75 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
         structured_obs['pos_ego'] = ego_pos
 
 
-        # | Get partner details
-        partner_obs = PartnerObs.from_tensor(
-            partner_obs_tensor=self.sim.partner_observations_tensor(),
-            backend=self.backend,
-            device=self.device,
-            mask=mask,
-        )        
-        partner_obs.rel_pos_x,
-        partner_obs.rel_pos_y,
+        # # | Get partner details
+        # partner_obs = PartnerObs.from_tensor(
+        #     partner_obs_tensor=self.sim.partner_observations_tensor(),
+        #     backend=self.backend,
+        #     device=self.device,
+        #     mask=mask,
+        # )        
+        # partner_obs.rel_pos_x,
+        # partner_obs.rel_pos_y,
 
 
-        # | Get road details
-        roadgraph = LocalRoadGraphPoints.from_tensor(
-            local_roadgraph_tensor=self.sim.agent_roadmap_tensor(),
-            backend=self.backend,
-            device=self.device,
-            mask=mask,
-        )
+        # # | Get road details
+        # roadgraph = LocalRoadGraphPoints.from_tensor(
+        #     local_roadgraph_tensor=self.sim.agent_roadmap_tensor(),
+        #     backend=self.backend,
+        #     device=self.device,
+        #     mask=mask,
+        # )
 
-        # print("Roadgraph: ", roadgraph.x.shape, roadgraph.type.shape, roadgraph.type)
-        roadgraph.x.unsqueeze(-1),
-        roadgraph.y.unsqueeze(-1),
-        roadgraph.segment_length.unsqueeze(-1),
-        roadgraph.segment_width.unsqueeze(-1),
-        roadgraph.segment_height.unsqueeze(-1),
-        roadgraph.orientation.unsqueeze(-1),
-        roadgraph.type,
-        # print("Roadgraph_: ", roadgraph.x.shape, roadgraph.type.shape, roadgraph.type)
+        # # print("Roadgraph: ", roadgraph.x.shape, roadgraph.type.shape, roadgraph.type)
+        # roadgraph.x.unsqueeze(-1),
+        # roadgraph.y.unsqueeze(-1),
+        # roadgraph.segment_length.unsqueeze(-1),
+        # roadgraph.segment_width.unsqueeze(-1),
+        # roadgraph.segment_height.unsqueeze(-1),
+        # roadgraph.orientation.unsqueeze(-1),
+        # roadgraph.type,
+        # # print("Roadgraph_: ", roadgraph.x.shape, roadgraph.type.shape, roadgraph.type)
 
         return structured_obs
 
 
-    def get_traj_ground_truth(self):
+    def get_data_log_obj(self):
+        """Get object containing ground truth trajectory for all agents."""
+        log_trajectory = LogTrajectory.from_tensor(
+            self.sim.expert_trajectory_tensor(),
+            self.num_worlds,
+            self.max_agent_count,
+            backend=self.backend,
+        )
+        
+        return log_trajectory
+
+
+    def get_ground_truth_traj(self):
+        """Get object containing ground truth trajectory for all agents."""
         log_trajectory = LogTrajectory.from_tensor(
             self.sim.expert_trajectory_tensor(),
             self.num_worlds,
             self.max_agent_count,
             backend=self.backend,
         )        
-        return log_trajectory
+        # return log_trajectory   
+    
+        # all_traj = []
+        # for w in range(self.num_worlds):
+        #     # Get controlled agent indices for this world
+        #     cont_agent_mask = self.cont_agent_mask[w]
+        #     world_agent_indices = torch.where(cont_agent_mask)[0]
+
+        #     if len(world_agent_indices) == 0:
+        #         continue
+
+        #     # Extract real-world trajectories of all vehicles
+        #     traj_xy = log_trajectory.pos_xy[w]
+
+        #     all_traj.append(traj_xy)
+        
+        return log_trajectory.pos_xy
     
 
     def get_partner_obj(self, mask=None):
@@ -1646,27 +1675,6 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
             mask=mask,
         )
         # USAGE: partner_info = get_partner_obj.ids
-    
-
-    def get_traj_obj(self, mask=None):
-        """Get trajectory validity."""
-
-        if not self.config.partner_obs:
-            return torch.Tensor().to(self.device)
-
-        return LogTrajectory.from_tensor(
-            self.sim.expert_trajectory_tensor(),
-            self.num_worlds,
-            self.max_agent_count,
-            backend=self.backend,
-        )
-
-        # For trajectory validity info
-        valids = raw_logs[:, :, 5 * TRAJ_LEN:6 * TRAJ_LEN].view(
-            num_worlds, max_agents, TRAJ_LEN, -1
-        ).to(torch.int32)
-
-        return valids
 
 
 

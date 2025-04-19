@@ -1,1 +1,0 @@
-{'data/processed/construal/tfrecord-00144-of-01000_130.json': {(0,): 1.0, (7,): 1.0, (59,): 1.0, (): 1.0}}
