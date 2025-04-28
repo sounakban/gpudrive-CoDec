@@ -147,7 +147,7 @@ def get_gpuDrive_vars(training_config,
                         config=env_config,
                         data_loader=train_loader,
                         max_cont_agents=max_agents,
-                        device=device,
+                        device="cpu",
                         )
 
     # |Import Pre-trained Model
