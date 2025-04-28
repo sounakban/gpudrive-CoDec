@@ -7,6 +7,7 @@ import torch
 from itertools import product
 import mediapy as media
 import gymnasium
+from textwrap import dedent
 
 from gpudrive.integrations.vbd.data_utils import process_scenario_data
 
@@ -1488,31 +1489,59 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
     """Torch Gym (Construed) Environment that interfaces with the GPU Drive simulator. Rebase"""
 
 
-    def get_obs(self, mask=None, partner_mask=None):
+    def get_obs(self, mask=None, partner_mask=None, raw_obs=False):
         """Get observation: Combine different types of environment information into a single tensor.
+        Args:
+            partner_mask (torch.Tensor): Mask to construe partner observations
+            raw_obs (bool): If True, returns raw observations (without flattening)
 
         Returns:
-            torch.Tensor: (num_worlds, max_agent_count, num_features)
+            torch.Tensor: (num_worlds, max_agent_count, all_features) when raw_obs is False
+            tuple: ( torch.Tensor[num_worlds, controlled_agent_count, ego_features],
+                     torch.Tensor[num_worlds, controlled_agent_count, obs_agent_count, partner_features],
+                     torch.Tensor[num_worlds, controlled_agent_count, road_features] )
+                    when raw_obs is True
         """
         ego_states = self._get_ego_state(mask)
-        partner_observations = self._get_partner_obs(mask, partner_mask)
+        partner_observations = self._get_partner_obs(mask, partner_mask, raw_obs=raw_obs)
         road_map_observations = self._get_road_map_obs(mask)
         lidar_observations = self._get_lidar_obs(mask)
 
-        obs = torch.cat(
-            (
-                ego_states,
-                partner_observations,
-                road_map_observations,
-            ),
-            dim=-1,
-        )
+        if raw_obs:
+            # obs = (
+            #         ego_states,
+            #         partner_observations,
+            #         road_map_observations,
+            #         )
+            obs = [(ego_states[env_num], 
+                    partner_observations[env_num], 
+                    road_map_observations[env_num]) for env_num in range(self.num_worlds)]
+        else:
+            obs = torch.cat(
+                (
+                    ego_states,
+                    partner_observations,
+                    road_map_observations,
+                ),
+                dim=-1,
+            )
 
         return obs
     
 
-    def _get_partner_obs(self, mask=None, partner_mask=None):
-        """Get partner observations."""
+    def _get_partner_obs(self, mask=None, partner_mask=None, raw_obs=False):
+        """
+        Get partner observations. 
+
+        Args:
+            mask (torch.Tensor): Mask to construe partner observations
+            partner_mask (torch.Tensor): Mask to construe partner observations
+            raw_obs (bool): If True, returns raw observations (without flattening)
+
+        Returns:
+            torch.Tensor: (num_worlds, max_agent_count, obs_agent_count*num_features) when raw_obs is False
+            torch.Tensor: (num_worlds, max_agent_count, obs_agent_count, num_features) when raw_obs is True
+        """
 
         if not self.config.partner_obs:
             return torch.Tensor().to(self.device)
@@ -1555,10 +1584,12 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
                     # print(np.where(partner_mask[0][0] == True))   # DEBUG: get locations to be masked
                     # print(torch.where((result == masked_values).all(dim=3))[-1])   # DEBUG: get location of masked values
                 else:
-                    raise ValueError("Partner mask needs to be either 1D (num_obs), when using same mask everywhere. \
-                                     Or 3D (num_envs,num_veh,num_obs), when using specific masks for specific \
-                                     vehicles in specific environments)")
-            result = result.flatten(start_dim=2)
+                    raise ValueError("Partner mask needs to be either 1D (num_obs), when using same mask everywhere. " 
+                                     "Or 3D (num_envs,num_veh,num_obs), when using specific masks for specific " 
+                                     f"vehicles in specific environments. Not {len(partner_mask.shape)}-dimensional.")
+            
+            if not raw_obs:
+                result = result.flatten(start_dim=2)
         
         return result
 

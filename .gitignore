@@ -249,6 +249,9 @@ pyrightconfig.json
 # Logs
 examples/experimental/logs/*
 
+# Results
+examples/CoDec_Research/results/simulation_results
+
 # Sbatch scripts
 *.sh
 
