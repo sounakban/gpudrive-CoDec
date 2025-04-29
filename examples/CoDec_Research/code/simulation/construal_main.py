@@ -66,10 +66,10 @@ dataset_path = 'data/processed/construal'
 
 # |Set simulator config
 max_agents = training_config.max_controlled_agents   # Get total vehicle count
-num_parallel_envs = 3
-total_envs = 12
-device = "cpu" # cpu just because we're in a notebook
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+num_parallel_envs = 5
+total_envs = 15
+# device = "cpu" # cpu just because we're in a notebook
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # |Set construal config
 construal_size = 1
@@ -216,14 +216,21 @@ def generate_all_construal_trajnval(out_dir: str,
         all_obs.update(all_obs_)
         ground_truth.update(ground_truth_)
 
-    with open(out_dir+"construal_vals_"+str(datetime.now())+".txt", 'w') as file:
-        file.write(str(construal_values))
-    with open(out_dir+"all_constr_obs_"+str(datetime.now())+".txt", 'w') as file:
-        file.write(str(all_obs))
-    with open(out_dir+"ground_truth_"+str(datetime.now())+".txt", 'w') as file:
-        file.write(str(ground_truth))
-
-    env.close()
+    # |Save the construal value information to a file
+    savefl_path = out_dir+"construal_vals_"+str(datetime.now())+".pickle"
+    with open(savefl_path, 'wb') as file:
+        pickle.dump(construal_values, file, protocol=pickle.HIGHEST_PROTOCOL)
+    print("Baseline data saved to: ", savefl_path)
+    # |Save the construal trajectory information to a file
+    savefl_path = out_dir+"all_constr_obs_"+str(datetime.now())+".pickle"
+    with open(savefl_path, 'wb') as file:
+        pickle.dump(all_obs, file, protocol=pickle.HIGHEST_PROTOCOL)
+    print("Baseline data saved to: ", savefl_path)
+    # |Save the ground truth information to a file
+    savefl_path = out_dir+"ground_truth_"+str(datetime.now())+".pickle"
+    with open(savefl_path, 'wb') as file:
+        pickle.dump(ground_truth, file, protocol=pickle.HIGHEST_PROTOCOL)
+    print("Baseline data saved to: ", savefl_path)
 
 
 
@@ -283,8 +290,6 @@ def generate_selected_construal_trajnval(out_dir: str,
         file.write(str(all_obs))
     # with open(out_dir+"ground_truth_"+str(datetime.now())+".txt", 'w') as file:
     #     file.write(str(ground_truth))
-
-    env.close()
 
 
 
@@ -363,8 +368,6 @@ def generate_baseline_data( out_dir: str,
         pickle.dump(state_action_pairs, file, protocol=pickle.HIGHEST_PROTOCOL)
     print("Baseline data saved to: ", savefl_path)
 
-    env.close()
-
     return state_action_pairs
 
 
@@ -390,27 +393,28 @@ if __name__ == "__main__":
     if torch.cuda.is_available():
         print("Using GPU: ", torch.cuda.get_device_name(torch.cuda.current_device()))
 
-    # generate_all_construal_trajnval(out_dir=out_dir,
-    #                             sim_agent=sim_agent,
-    #                             observed_agents_count=observed_agents_count,
-    #                             construal_size=construal_size,
-    #                             num_parallel_envs=num_parallel_envs,
-    #                             max_agents=max_agents,
-    #                             sample_size=sample_size,
-    #                             device=device,
-    #                             train_loader=train_loader,
-    #                             env=env,
-    #                             env_multi_agent=env_multi_agent)
+    generate_all_construal_trajnval(out_dir=out_dir,
+                                sim_agent=sim_agent,
+                                observed_agents_count=observed_agents_count,
+                                construal_size=construal_size,
+                                num_parallel_envs=num_parallel_envs,
+                                max_agents=max_agents,
+                                sample_size=sample_size,
+                                device=device,
+                                train_loader=train_loader,
+                                env=env,
+                                env_multi_agent=env_multi_agent,
+                                generate_animations=False)
     
-    results = generate_baseline_data(out_dir=out_dir,
-                            sim_agent=sim_agent,
-                            num_parallel_envs=num_parallel_envs,
-                            max_agents=max_agents,
-                            sample_size=sample_size,
-                            device=device,
-                            train_loader=train_loader,
-                            env=env,
-                            env_multi_agent=env_multi_agent)
+    # results = generate_baseline_data(out_dir=out_dir,
+    #                         sim_agent=sim_agent,
+    #                         num_parallel_envs=num_parallel_envs,
+    #                         max_agents=max_agents,
+    #                         sample_size=sample_size,
+    #                         device=device,
+    #                         train_loader=train_loader,
+    #                         env=env,
+    #                         env_multi_agent=env_multi_agent)
 
     execution_time = time.perf_counter() - start_time
     print(f"Execution time: {math.floor(execution_time/60)} minutes and {execution_time%60:.1f} seconds")

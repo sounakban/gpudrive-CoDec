@@ -4,6 +4,7 @@ from functools import cache
 import json
 from unittest import result
 
+import torch
 from scipy.special import softmax
 import numpy as np
 import math
@@ -77,6 +78,8 @@ def get_construals(total_obj_count: int,
         total_obj_count: Total number of objects (used to determine length of mask)
         target_obj_indices: A list of indices containing all objects of interest in the bollean list
         construal_size: Size of each contrual
+        expanded_mask: If True, return the expanded mask of shape [objects, observations]
+                        If False, return the construal indices and mask of shape [objects]
 
     Returns:
         Dictionary with construal indices as keys and coorresponding masks (boolean lists) as values.
@@ -93,9 +96,9 @@ def get_construals(total_obj_count: int,
         construal_info[construal_num] = (construal_indices, curr_mask)
     # |Default construal where all vehicles are observed
     if expanded_mask:
-        construal_info['default'] = ((), expand_construal_mask([False,]*total_obj_count))
+        construal_info['default'] = ((), torch.tensor(expand_construal_mask([False,]*total_obj_count)))
     else:
-        construal_info['default'] = ((), [False,]*total_obj_count)
+        construal_info['default'] = ((), torch.tensor([False,]*total_obj_count))
     return construal_info
 
 
