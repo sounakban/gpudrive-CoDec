@@ -42,8 +42,40 @@ from gpudrive.visualize.utils import img_from_fig
 
 
 
+
+
 # Function to extract filename from path
 env_path2name = lambda path: path.split("/")[-1].split(".")[0]
+
+
+
+
+
+def save_animations(sim_state_frames: dict, save_dir: str = './sim_vids'):
+    """
+    Save animations to a specified directory
+    Args:
+        sim_state_frames: Dictionary containing the frames for each environment
+        save_dir: Directory to save the animations
+    """
+    print("Saving animations to: ", save_dir)
+    sim_state_arrays = {k: np.array(v) for k, v in sim_state_frames.items()}
+
+    # |Display and save videos locally
+    mediapy.set_show_save_dir(save_dir)
+    mediapy.show_videos(sim_state_arrays, fps=15, width=500, height=500, columns=2, codec='gif')
+    
+    # |Save videos locally
+    # for env_id, frames in sim_state_arrays.items():        
+    #     mediapy.write_video(
+    #         str(save_dir+'/'+env_id+'.gif'),
+    #         frames,
+    #         fps=15,
+    #         codec='gif',
+    #     )
+
+
+
 
 
 
@@ -112,6 +144,8 @@ def run_policy(env: GPUDriveTorchEnv,
 
 
 
+
+
 def simulate_construal_policies(env: GPUDriveConstrualEnv, 
                         observed_agents_count: int,
                         construal_size: int,
@@ -156,7 +190,8 @@ def simulate_construal_policies(env: GPUDriveConstrualEnv,
         # print("Observation shape: ", next_obs.shape)
 
         #2# |Define observation mask for construal
-        construal_info = [get_construal_byIndex(max_agents, moving_veh_indices[scene_num], construal_size, const_num, expanded_mask=True) for scene_num in range(len(env.data_batch))]
+        construal_info = [get_construal_byIndex(max_agents, moving_veh_indices[scene_num], construal_size, const_num, expanded_mask=True, device=device) 
+                            for scene_num in range(len(env.data_batch))]
         mask_indices, construal_masks = zip(*construal_info)   # Unzip construal masks
         
         frames = {f"env_{env_path2name(env_path_)}-constr_{const_num}-sample_{sample_num_}": [] for sample_num_ in range(sample_size) for env_path_ in env.data_batch}
@@ -221,8 +256,7 @@ def simulate_construal_policies(env: GPUDriveConstrualEnv,
 
         #2# |Save animations
         if generate_animations:
-            mediapy.set_show_save_dir('./sim_vids')
-            mediapy.show_videos(frames, fps=15, width=500, height=500, columns=2, codec='gif')
+            save_animations(frames)
 
     #2# Extract ground-truth data
     ground_truth = {'traj': {}, 'traj_valids': {}, 'contr_veh_indices': {}}
@@ -235,6 +269,8 @@ def simulate_construal_policies(env: GPUDriveConstrualEnv,
     # print("\nExpected utility by contrual: ", construal_values)
     
     return (construal_values, all_obs, ground_truth)
+
+
 
 
 
@@ -356,8 +392,9 @@ def simulate_selected_construal_policies(env: GPUDriveConstrualEnv,
 
         #2# |Save animations
         if generate_animations:
-            mediapy.set_show_save_dir('./sim_vids')
-            mediapy.show_videos(frames, fps=15, width=500, height=500, columns=2, codec='gif')
+            save_animations(frames)
+            # mediapy.set_show_save_dir('./sim_vids')
+            # mediapy.show_videos(frames, fps=15, width=500, height=500, columns=2, codec='gif')
 
     #2# Extract ground-truth data
     # ground_truth = {'traj': {}, 'traj_valids': {}, 'contr_veh_indices': {}}
@@ -470,8 +507,9 @@ def simulate_generalist_policies1(env: GPUDriveConstrualEnv,
 
     #2# |Save animations
     if generate_animations:
-        mediapy.set_show_save_dir('./sim_vids')
-        mediapy.show_videos(frames, fps=15, width=500, height=500, columns=2, codec='gif')
+        save_animations(frames)
+        # mediapy.set_show_save_dir('./sim_vids')
+        # mediapy.show_videos(frames, fps=15, width=500, height=500, columns=2, codec='gif')
 
     # print("\nExpected utility by contrual: ", construal_values)
     return (model_values, all_obs, ground_truth)
@@ -555,8 +593,9 @@ def simulate_generalist_policies2(env: GPUDriveConstrualEnv,
 
     #2# |Save animations
     if generate_animations:
-        mediapy.set_show_save_dir('./sim_vids')
-        mediapy.show_videos(frames, fps=15, width=500, height=500, columns=2, codec='gif')
+        save_animations(frames)
+        # mediapy.set_show_save_dir('./sim_vids')
+        # mediapy.show_videos(frames, fps=15, width=500, height=500, columns=2, codec='gif')
 
     # print("\nExpected utility by contrual: ", construal_values)
     return state_action_pairs

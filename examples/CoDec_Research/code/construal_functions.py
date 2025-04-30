@@ -17,6 +17,8 @@ from typing import Any, List, Tuple
 import os
 from pathlib import Path
 
+from zmq import device
+
 
 
 
@@ -67,10 +69,11 @@ def expand_construal_mask(constr_mask: list):
 
 
 @cache
-def get_construals(total_obj_count: int, 
-                   target_obj_indices: tuple, 
-                   construal_size: int, 
-                   expanded_mask: bool = False):
+def get_construals( total_obj_count: int, 
+                    target_obj_indices: tuple, 
+                    construal_size: int, 
+                    expanded_mask: bool = False,
+                    device: str = 'cpu',):
     '''
     Create construed masks based on complete mask and objects of interest
 
@@ -108,7 +111,8 @@ def get_construal_byIndex(total_obj_count: int,
                           target_obj_indices: List, 
                           construal_size: int, 
                           indx: int, 
-                          expanded_mask: bool = False):
+                          expanded_mask: bool = False,
+                          device: str = 'cpu',):
     '''
     Create construed masks based on complete mask and objects of interest
 
@@ -124,7 +128,7 @@ def get_construal_byIndex(total_obj_count: int,
         Tuple of construal object indices and coorresponding mask (boolean list).
         If index is greater than number of constrauls it returns a default value, with no observable objects
     '''
-    all_construals = get_construals(total_obj_count, target_obj_indices, construal_size, expanded_mask)
+    all_construals = get_construals(total_obj_count, target_obj_indices, construal_size, expanded_mask, device)
     if indx in all_construals.keys():
         return all_construals[indx]
     else:
