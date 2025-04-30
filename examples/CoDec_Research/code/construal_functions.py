@@ -98,6 +98,7 @@ def get_construals( total_obj_count: int,
             curr_mask = expand_construal_mask(curr_mask)
         construal_info[construal_num] = (construal_indices, curr_mask)
     # |Default construal where all vehicles are observed
+    print("Using device (get_construals): ", device)
     if expanded_mask:
         construal_info['default'] = ((), torch.tensor(expand_construal_mask([False,]*total_obj_count)).to(device))
     else:
@@ -128,6 +129,7 @@ def get_construal_byIndex(total_obj_count: int,
         Tuple of construal object indices and coorresponding mask (boolean list).
         If index is greater than number of constrauls it returns a default value, with no observable objects
     '''
+    print("Using device (get_construal_byIndex): ", device)
     all_construals = get_construals(total_obj_count, target_obj_indices, construal_size, expanded_mask, device)
     if indx in all_construals.keys():
         return all_construals[indx]

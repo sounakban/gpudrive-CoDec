@@ -190,6 +190,7 @@ def simulate_construal_policies(env: GPUDriveConstrualEnv,
         # print("Observation shape: ", next_obs.shape)
 
         #2# |Define observation mask for construal
+        print("Using device (simulate_construal_policies): ", device)
         construal_info = [get_construal_byIndex(max_agents, moving_veh_indices[scene_num], construal_size, const_num, expanded_mask=True, device=device) 
                             for scene_num in range(len(env.data_batch))]
         mask_indices, construal_masks = zip(*construal_info)   # Unzip construal masks
