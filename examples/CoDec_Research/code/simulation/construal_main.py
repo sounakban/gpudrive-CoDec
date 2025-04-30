@@ -66,10 +66,10 @@ dataset_path = 'data/processed/construal'
 
 # |Set simulator config
 max_agents = training_config.max_controlled_agents   # Get total vehicle count
-num_parallel_envs = 5
+num_parallel_envs = 1
 total_envs = 15
-# device = "cpu" # cpu just because we're in a notebook
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "cpu" # cpu just because we're in a notebook
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # |Set construal config
 construal_size = 1

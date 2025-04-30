@@ -193,7 +193,7 @@ def simulate_construal_policies(env: GPUDriveConstrualEnv,
         construal_info = [get_construal_byIndex(max_agents, moving_veh_indices[scene_num], construal_size, const_num, expanded_mask=True, device=device) 
                             for scene_num in range(len(env.data_batch))]
         mask_indices, construal_masks = zip(*construal_info)   # Unzip construal masks
-        
+                
         frames = {f"env_{env_path2name(env_path_)}-constr_{const_num}-sample_{sample_num_}": [] for sample_num_ in range(sample_size) for env_path_ in env.data_batch}
         curr_samples = []   # Keep track of rewards
         for sample_num in range(sample_size):
