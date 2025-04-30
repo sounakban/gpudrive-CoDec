@@ -1572,7 +1572,7 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
             )
             if partner_mask:
                 try:
-                    partner_mask = np.array(partner_mask)
+                    partner_mask = torch.tensor(partner_mask).to(self.device)
                 except Error as e:
                     raise ValueError("Cannot convert partner mask to numpy array because:\n"+e)
                 
