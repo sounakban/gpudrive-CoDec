@@ -13,6 +13,8 @@ import os
 import sys
 from pathlib import Path
 
+from zmq import device
+
 # |Set working directory to the base directory 'gpudrive'
 working_dir = Path.cwd()
 while working_dir.name != 'gpudrive-CoDec':
@@ -97,6 +99,7 @@ def evaluate_construals(baseline_data: Dict,
                         construal_size: int, 
                         sim_agent: NeuralNet, 
                         out_dir: str,
+                        device: str = 'cpu',
                         ) -> Dict:
     """
     Evaluate the construals using the simulation agent.
@@ -122,7 +125,7 @@ def evaluate_construals(baseline_data: Dict,
         construal_count = get_construal_count(max_agents, moving_veh_indices, construal_size)
         prev_obs = None     # Used in code debugging below
         for construal_num in range(construal_count):
-            construal_indices, construal_mask = get_construal_byIndex(max_agents, moving_veh_indices, construal_size, construal_num, expanded_mask=True)
+            construal_indices, construal_mask = get_construal_byIndex(max_agents, moving_veh_indices, construal_size, construal_num, expanded_mask=True, device=device)
             print("Processing Construal: ", construal_indices)
             #3# |get_construal_byIndex produces masks of shape [scenes,objs], reshape to [scenes,objs,obs]
             # curr_masks = [list(construal_mask) for _ in range(len(construal_mask))]     # Create multiple copies of the mask, one for each vehicle

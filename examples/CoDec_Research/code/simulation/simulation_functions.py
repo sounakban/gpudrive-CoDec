@@ -62,17 +62,17 @@ def save_animations(sim_state_frames: dict, save_dir: str = './sim_vids'):
     sim_state_arrays = {k: np.array(v) for k, v in sim_state_frames.items()}
 
     # |Display and save videos locally
-    mediapy.set_show_save_dir(save_dir)
-    mediapy.show_videos(sim_state_arrays, fps=15, width=500, height=500, columns=2, codec='gif')
+    # mediapy.set_show_save_dir(save_dir)
+    # mediapy.show_videos(sim_state_arrays, fps=15, width=500, height=500, columns=2, codec='gif')
     
     # |Save videos locally
-    # for env_id, frames in sim_state_arrays.items():        
-    #     mediapy.write_video(
-    #         str(save_dir+'/'+env_id+'.gif'),
-    #         frames,
-    #         fps=15,
-    #         codec='gif',
-    #     )
+    for env_id, frames in sim_state_arrays.items():        
+        mediapy.write_video(
+            str(save_dir+'/'+env_id+'.gif'),
+            frames,
+            fps=15,
+            codec='gif',
+        )
 
 
 

@@ -99,9 +99,9 @@ def get_construals( total_obj_count: int,
         construal_info[construal_num] = (construal_indices, curr_mask)
     # |Default construal where all vehicles are observed
     if expanded_mask:
-        construal_info['default'] = ((), torch.tensor(expand_construal_mask([False,]*total_obj_count)))
+        construal_info['default'] = ((), torch.tensor(expand_construal_mask([False,]*total_obj_count)).to(device))
     else:
-        construal_info['default'] = ((), torch.tensor([False,]*total_obj_count))
+        construal_info['default'] = ((), torch.tensor([False,]*total_obj_count).to(device))
     return construal_info
 
 
