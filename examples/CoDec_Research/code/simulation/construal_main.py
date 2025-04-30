@@ -151,7 +151,7 @@ def get_gpuDrive_vars(training_config,
                         )
 
     # |Import Pre-trained Model
-    sim_agent = NeuralNet.from_pretrained(sim_agent_path)
+    sim_agent = NeuralNet.from_pretrained(sim_agent_path).to(device)
 
     return (env_config, train_loader, env, env_multi_agent, sim_agent)
 
