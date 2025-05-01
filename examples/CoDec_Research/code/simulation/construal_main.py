@@ -202,7 +202,7 @@ def generate_all_construal_trajnval(out_dir: str,
         control_mask = env.cont_agent_mask
 
         # |Simulate on Construals
-        construal_values_, all_obs_, ground_truth_ = simulate_construal_policies(env = env, 
+        construal_values_, all_obs_, ground_truth_ = simulate_construal_policies(env = env,
                                                             observed_agents_count = observed_agents_count,
                                                             construal_size= construal_size,
                                                             total_envs = num_parallel_envs,

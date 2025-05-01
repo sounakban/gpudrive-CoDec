@@ -102,6 +102,7 @@ def run_policy(env: GPUDriveTorchEnv,
                frames: dict,
                const_num: int,
                sample_num: int,
+               generate_animations: bool = False,
                ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, Any]:
     # |Predict actions
     action, _, _, _, action_probs = sim_agent(next_obs[control_mask], deterministic=False)
@@ -121,11 +122,12 @@ def run_policy(env: GPUDriveTorchEnv,
     print_gpu_usage(device)
 
     # |Render
-    sim_states = env.vis.plot_simulator_state(
-        env_indices=list(range(total_envs)),
-        time_steps=[time_step]*total_envs,
-        zoom_radius=70,
-    )
+    if generate_animations:
+        sim_states = env.vis.plot_simulator_state(
+            env_indices=list(range(total_envs)),
+            time_steps=[time_step]*total_envs,
+            zoom_radius=70,
+        )
     
     if construal_masks:
         for env_num_, env_path_ in enumerate(env.data_batch):
@@ -232,6 +234,7 @@ def simulate_construal_policies(env: GPUDriveConstrualEnv,
                                                                                         frames=frames,
                                                                                         const_num=const_num,
                                                                                         sample_num=sample_num,
+                                                                                        generate_animations=generate_animations,
                                                                                     )
 
                 #3# |Record observations for each construal
