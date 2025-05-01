@@ -57,7 +57,7 @@ def print_gpu_usage(device: str):
         free, total = torch.cuda.mem_get_info(device)
         mem_used_MB = (total - free) / (1024 ** 2)
         utilization = torch.cuda.utilization()
-        print(f"GPU usage: {utilization:3d}% and {mem_used_MB:3d}MB", end="\r")
+        print(f"GPU usage: {utilization:3.2f}% and {mem_used_MB:3.2f}MB", end="\r")
 
 
 
