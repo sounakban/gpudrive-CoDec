@@ -74,7 +74,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # |Set construal config
 construal_size = 1
 observed_agents_count = max_agents - 1      # Agents observed except self (used for vector sizes)
-sample_size = 30                            # Number of samples to calculate expected utility of a construal
+sample_size = 50                            # Number of samples to calculate expected utility of a construal
 
 # |Other changes to variables
 training_config.max_controlled_agents = 1    # Control only the first vehicle in the environment
