@@ -51,7 +51,7 @@ def print_gpu_usage(device: str):
     """
     Print GPU usage
     """
-    if 'cuda' in device:
+    if torch.cuda.is_available() and torch.device("cuda") == device:
         free, total = torch.cuda.mem_get_info(device)
         mem_used_MB = (total - free) / (1024 ** 2)
         utilization = torch.cuda.utilization()
