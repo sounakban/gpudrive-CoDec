@@ -47,6 +47,8 @@ from gpudrive.visualize.utils import img_from_fig
 env_path2name = lambda path: path.split("/")[-1].split(".")[0]
 
 
+
+
 def print_gpu_usage(device: str):
     """
     Print GPU usage
@@ -55,7 +57,9 @@ def print_gpu_usage(device: str):
         free, total = torch.cuda.mem_get_info(device)
         mem_used_MB = (total - free) / (1024 ** 2)
         utilization = torch.cuda.utilization()
-        print("GPU usage: ", utilization, "%; ", mem_used_MB, "MB")
+        print(f"GPU usage: {utilization:3d}% and {mem_used_MB:3d}MB", end="\r")
+
+
 
 
 def save_animations(sim_state_frames: dict, save_dir: str = './sim_vids'):
@@ -112,6 +116,9 @@ def run_policy(env: GPUDriveTorchEnv,
 
     # |Step
     env.step_dynamics(action_template)
+
+    #2# |Print GPU usage
+    print_gpu_usage(device)
 
     # |Render
     sim_states = env.vis.plot_simulator_state(
@@ -192,9 +199,6 @@ def simulate_construal_policies(env: GPUDriveConstrualEnv,
     loop_count = math.comb(observed_agents_count, construal_size)                  # Calculate the number of loops
     for const_num in range(loop_count):
         # |Repeat rollout for each construal
-
-        #2# |Print GPU usage
-        print_gpu_usage(device)
 
         # next_obs = env.reset()
         # print("Observation shape: ", next_obs.shape)
@@ -339,9 +343,6 @@ def simulate_selected_construal_policies(env: GPUDriveConstrualEnv,
     for const_num in range(loop_count):
         # |Repeat rollout for each construal
 
-        #2# |Print GPU usage
-        print_gpu_usage(device)
-
         # next_obs = env.reset()
         # print("Observation shape: ", next_obs.shape)
 
@@ -461,9 +462,6 @@ def simulate_generalist_policies1(env: GPUDriveConstrualEnv,
     frames = {f"env_{env_path2name(env_path_)}-sample_{sample_num_}": [] for sample_num_ in range(sample_size) for env_path_ in env.data_batch}
     curr_samples = []   # Keep track of reards
     for sample_num in range(sample_size):
-        #2# |Print GPU usage
-        print_gpu_usage(device)
-
         print("\tsample ", sample_num)
         _ = env.reset()
         next_obs = env.get_obs()
@@ -573,10 +571,6 @@ def simulate_generalist_policies2(env: GPUDriveConstrualEnv,
         next_obs = env.get_obs()
         for time_step in range(env.episode_len):
             # |Roll out policy
-
-            #2# |Print GPU usage
-            print_gpu_usage(device)
-
             print(f"\r\t\tStep: {time_step+1}", end="", flush=True)
 
             #2# |Get raw observations before stepping through environment
