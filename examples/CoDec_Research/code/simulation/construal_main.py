@@ -212,7 +212,7 @@ def generate_all_construal_trajnval(out_dir: str,
                                                             sim_agent = sim_agent,
                                                             control_mask = control_mask,
                                                             device = device,
-                                                            generate_animations= generate_animations)
+                                                            generate_animations = generate_animations)
         construal_values.update(construal_values_)
         all_obs.update(all_obs_)
         ground_truth.update(ground_truth_)

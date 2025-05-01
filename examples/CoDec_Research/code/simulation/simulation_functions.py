@@ -376,6 +376,7 @@ def simulate_selected_construal_policies(env: GPUDriveConstrualEnv,
                                                                                         frames=frames,
                                                                                         const_num=const_num,
                                                                                         sample_num=sample_num,
+                                                                                        generate_animations=generate_animations,
                                                                                     )
 
                 #3# |Record observations for each construal
@@ -485,6 +486,7 @@ def simulate_generalist_policies1(env: GPUDriveConstrualEnv,
                                                                                     frames=frames,
                                                                                     const_num=-1,
                                                                                     sample_num=sample_num,
+                                                                                    generate_animations=generate_animations,
                                                                                 )
 
             #2# |Record observations
@@ -592,6 +594,7 @@ def simulate_generalist_policies2(env: GPUDriveConstrualEnv,
                                                                                     frames=frames,
                                                                                     const_num=-1,
                                                                                     sample_num=sample_num,
+                                                                                    generate_animations=generate_animations,
                                                                                     )
 
             #2# |Record observations
