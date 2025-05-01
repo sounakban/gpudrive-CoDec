@@ -129,12 +129,12 @@ def run_policy(env: GPUDriveTorchEnv,
             zoom_radius=70,
         )
     
-    if construal_masks:
-        for env_num_, env_path_ in enumerate(env.data_batch):
-            frames[f"env_{env_path2name(env_path_)}-constr_{const_num}-sample_{sample_num}"].append(img_from_fig(sim_states[env_num_])) 
-    else:
-        for env_num_, env_path_ in enumerate(env.data_batch):
-            frames[f"env_{env_path2name(env_path_)}-sample_{sample_num}"].append(img_from_fig(sim_states[env_num_])) 
+        if construal_masks:
+            for env_num_, env_path_ in enumerate(env.data_batch):
+                frames[f"env_{env_path2name(env_path_)}-constr_{const_num}-sample_{sample_num}"].append(img_from_fig(sim_states[env_num_])) 
+        else:
+            for env_num_, env_path_ in enumerate(env.data_batch):
+                frames[f"env_{env_path2name(env_path_)}-sample_{sample_num}"].append(img_from_fig(sim_states[env_num_])) 
 
     next_obs = env.get_obs(partner_mask=construal_masks)
     reward = env.get_rewards()
