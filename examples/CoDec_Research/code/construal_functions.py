@@ -19,6 +19,8 @@ from pathlib import Path
 
 from zmq import device
 
+from gpudrive.env.env_torch import GPUDriveConstrualEnv
+
 
 
 
@@ -152,3 +154,48 @@ def get_construal_count(total_obs_count, target_obj_indices, construal_size):
     '''
     return len(get_construals(total_obs_count, target_obj_indices, construal_size))
 
+
+
+#######################################################
+################# HEURISTICS FUNCTIONS ################
+#######################################################
+
+### Support Functions ###
+euclidean_distance = lambda point1, point2: math.sqrt(sum([(a - b) ** 2 for a, b in zip(point1, point2)]))
+
+
+
+### Generate Construal Heuristic Values (Heuristic 1: Distance from ego) ###
+def get_construal_veh_distance(env: GPUDriveConstrualEnv, construal_indices: tuple, average: bool = True):
+    '''
+    Get the (average or) distance of each vehicle in the construal to the ego vehicle
+
+    Args:
+        env: The environment object
+        construal_indices: A list of indices containing all objects of interest in the bollean list
+        average: If true, return the average distance of all vehicles in the construal to the ego vehicle
+
+    Returns:
+        The average distance or a list of distances from the ego vehicle to each vehicle in the construal
+    '''
+    # |Populate dictionary will all relevant information
+    info_dict = dict()
+    for env_num, env_name in enumerate(env.data_batch):
+        info_dict[env_name] = dict()
+        info_dict[env_name]['ego_index'] = torch.where(env.cont_agent_mask[env_num])[0].item()
+        info_dict[env_name]['construal_indices'] = construal_indices[env_name]
+    
+    # |Get all vehicle distances
+    all_pos = env.get_data_log_obj().pos_xy
+    distance_dict = dict()
+    for env_num, env_name in enumerate(env.data_batch):
+        
+        distance_dict[env_name] = dict()
+        for curr_indices in info_dict[env_name]['construal_indices']:
+            distance_dict[env_name][curr_indices] = [euclidean_distance(all_pos[env_num][info_dict[env_name]['ego_index']][0].cpu().numpy(), 
+                                                                        all_pos[env_num][i][0].cpu().numpy()) 
+                                                        for i in curr_indices]
+            if average:
+                distance_dict[env_name][curr_indices] = sum(distance_dict[env_name][curr_indices])/len(distance_dict[env_name][curr_indices])
+        
+    return distance_dict

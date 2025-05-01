@@ -68,8 +68,8 @@ dataset_path = 'data/processed/construal'
 max_agents = training_config.max_controlled_agents   # Get total vehicle count
 num_parallel_envs = 1
 total_envs = 15
-device = "cpu" # cpu just because we're in a notebook
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = "cpu" # cpu just because we're in a notebook
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # |Set construal config
 construal_size = 1
@@ -196,7 +196,8 @@ def generate_all_construal_trajnval(out_dir: str,
         # |Get moving vehicle information
         env_multi_agent.swap_data_batch(batch)
         moving_veh_mask = env_multi_agent.cont_agent_mask
-        moving_veh_indices = [tuple([i for i, val in enumerate(mask) if val]) for mask in moving_veh_mask]
+        # moving_veh_indices = [tuple([i for i, val in enumerate(mask) if val]) for mask in moving_veh_mask]
+        moving_veh_indices = [tuple(torch.where(mask)[0].cpu().tolist()) for mask in moving_veh_mask]
         print("Indices of all moving vehicles (by scene): ", moving_veh_indices)
         control_mask = env.cont_agent_mask
 

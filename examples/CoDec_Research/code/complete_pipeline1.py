@@ -94,9 +94,9 @@ env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
 
 
 
-################################################
-################ RUN EVALUATION ################
-################################################
+#################################################
+################ LOG LIKELIHOODS ################
+#################################################
 
 
 ### Generate Baseline Data ###
@@ -139,7 +139,8 @@ for scdFile in simulation_results_files:
 
 construal_action_likelihoods = evaluate_construals(state_action_pairs, construal_size, sim_agent, out_dir, device=device)
 
-
+# |Clear memory for large variable, once it has served its purpose
+del state_action_pairs
 
 
 
@@ -194,3 +195,19 @@ generate_selected_construal_trajnval(out_dir=out_dir,
                                     env_multi_agent=env_multi_agent,
                                     selected_construals = scene_constr_dict,
                                     generate_animations=True,)
+
+
+
+
+
+
+##################################################
+################ CONSTRUAL VALUES ################
+##################################################
+
+### Generate Construal Execution Values ###
+
+
+
+
+### Generate Construal Heuristic Values (Heuristic 1: Distance from ego) ###
