@@ -28,7 +28,8 @@ os.chdir(working_dir)
 sys.path.append(str(working_dir))
 
 # |Local imports
-from examples.CoDec_Research.code.construal_functions import get_construal_byIndex, get_construal_count, get_construals
+from examples.CoDec_Research.code.construal_functions import get_construal_byIndex, get_construal_count, \
+                                                                get_construals, get_selected_construal_byIndex
 from examples.CoDec_Research.code.analysis.evaluate_construal_actions import process_state
 
 # |GPUDrive imports
@@ -162,32 +163,41 @@ def run_policy(env: GPUDriveTorchEnv,
 
 
 
-def simulate_construal_policies(env: GPUDriveConstrualEnv, 
-                        observed_agents_count: int,
-                        construal_size: int,
+def simulate_policies(env: GPUDriveConstrualEnv, 
                         total_envs: int,
                         max_agents: int,
-                        moving_veh_indices: List,
                         sample_size: int,
                         sim_agent: NeuralNet,
                         control_mask: List,
                         device: str,
+                        observed_agents_count: int = 0,
+                        moving_veh_indices: List = [],
+                        construal_size: int = 0,
+                        selected_construals: Dict[str, List[Tuple[int]]] = None,
                         generate_animations: bool = False,
-                        ) -> Tuple[dict, dict, dict]:
+                        save_state_action_pairs: bool = False,
+                        save_trajectory_obs: bool = False,
+                        ) -> Tuple[dict, dict, dict, dict]:
     """
-    Simulate environment under construed observation spaces
+    Simulate environment under construed (or non-construed) observation spaces, and
+        save trajectories, observations, and values of model agents (when for each construal)
     
     Args:
         env: GPUDrive simulation environment
-        observed_agents_count: Number of agents being observed by model agent
-        construal_size: The number of agents beings observed in each construal
         total_envs: Number of scenarios being simulated
         max_agents: Maximum number of (tracked) agents in the environment
-        moving_veh_indices: Indices of (moving) vehicles of interest in the environment
         sample_size: The number of samples to draw to estimate value of construals
         sim_agent: The (pre-trained) agent model
         control_mask: The mask specifying which agent(s) is controlled by the model
         device: Whether use CPU or GPU for computation
+        observed_agents_count: Number of agents being observed by model agent
+        moving_veh_indices: Indices of (moving) vehicles of interest in the environment
+        construal_size: The number of agents beings observed in each construal,
+                            set to 0, when only genersalist policies are to be simulated
+        selected_construals: Dictionary containing construals to be simulated for each environment.
+        generate_animations: Boolean values indicates whether to save simulation animations
+        save_state_action_pairs: Boolean values indicates whether to save state-action pairs
+        save_trajectory_obs: Boolean values indicates whether to save vehicle trajectory data
     
     Returns (two dictionaries):
         construal_values: Dictionary that contains the expected utility of each construal
@@ -196,30 +206,65 @@ def simulate_construal_policies(env: GPUDriveConstrualEnv,
                     Structure: {scene_name: {construal_mask: {sample_num: [vehicles,timestep,coord]}}}
 
     """
-    construal_values = {env_name: {} for env_name in env.data_batch}               # Dictionary that contains the expected utility per construal
-    all_obs = {env_name: {} for env_name in env.data_batch}                        # Dictionary that contains the observations (agent trajectories) for each construal
-    loop_count = math.comb(observed_agents_count, construal_size)                  # Calculate the number of loops
+    curr_data_batch = [env_path2name(env_path_) for env_path_ in env.data_batch]
+    all_obs = {env_name: {} for env_name in curr_data_batch}                        # Dictionary that contains the observations (agent trajectories) for each construal
+    state_action_pairs = {env_name: {} for env_name in curr_data_batch}             # Dictionary that contains all states and corresponding action distributions
+    construal_values = {env_name: {} for env_name in curr_data_batch}               # Dictionary that contains the expected utility per construal
+
+    # Compute the number of loops
+    if selected_construals is None:
+        loop_count = math.comb(observed_agents_count, construal_size)
+    else:
+        loop_count = set([len(sel_constr_) for sel_constr_ in selected_construals.values()])
+        if len(loop_count) > 1:
+            raise ValueError("Number of construals per scene must be the same")
+        loop_count = loop_count.pop()
     for const_num in range(loop_count):
-        # |Repeat rollout for each construal
+        # |LOOP rollout for each construal
 
         # next_obs = env.reset()
         # print("Observation shape: ", next_obs.shape)
 
-        #2# |Define observation mask for construal
-        construal_info = [get_construal_byIndex(max_agents, moving_veh_indices[scene_num], construal_size, const_num, expanded_mask=True, device=device) 
-                            for scene_num in range(len(env.data_batch))]
-        mask_indices, construal_masks = zip(*construal_info)   # Unzip construal masks
-                
-        frames = {f"env_{env_path2name(env_path_)}-constr_{const_num}-sample_{sample_num_}": [] for sample_num_ in range(sample_size) for env_path_ in env.data_batch}
+        if construal_size > 0:
+            #2# |IF simulating on construals
+            #3# |Define observation mask for construal
+            if selected_construals is None:
+                construal_info = [get_construal_byIndex(max_agents, moving_veh_indices[scene_num], construal_size, const_num, \
+                                                        expanded_mask=True, device=device) 
+                                    for scene_num in range(len(curr_data_batch))]
+            else:                
+                construal_info = [get_selected_construal_byIndex(max_agents, moving_veh_indices[scene_num_], construal_size, \
+                                                                 const_num, selected_construals[sene_name_], expanded_mask=True, \
+                                                                 device=device) 
+                                    for scene_num_, sene_name_ in enumerate(curr_data_batch)]
+            mask_indices, construal_masks = zip(*construal_info)   # Unzip construal masks
+            #3# |Create empty dictionaries to store information
+            for env_num, env_name in enumerate(curr_data_batch):
+                all_obs[env_name][mask_indices[env_num]] = {sample_num_: None for sample_num_ in range(sample_size)}
+                state_action_pairs[env_name][mask_indices[env_num]] = {sample_num_: [] for sample_num_ in range(sample_size)}                
+                frames = {f"env_{env_name}-constr_{const_num}-sample_{sample_num_}": [] for sample_num_ in range(sample_size)}
+        else:
+            #2# |IF only simulating generalist policy
+            construal_masks = None
+            const_num = -1
+            #3# |Create empty dictionaries to store information
+            for env_name in curr_data_batch:
+                all_obs[env_name][()] = {sample_num_: None for sample_num_ in range(sample_size)}
+                state_action_pairs[env_name][()] = {sample_num_: [] for sample_num_ in range(sample_size)}                
+                frames = {f"env_{env_name}-sample_{sample_num_}": [] for sample_num_ in range(sample_size)}
+        
         curr_samples = []   # Keep track of rewards
         for sample_num in range(sample_size):
-            print("\tsample ", sample_num)
+            print("\tsample ", sample_num+1)
             
             _ = env.reset()
             next_obs = env.get_obs(partner_mask=construal_masks)
             for time_step in range(env.episode_len):
                 #2# |Roll out policy for a specific construal
                 print(f"\r\t\tStep: {time_step+1}", end="", flush=True)
+
+                #3# |Get raw observations before stepping through environment
+                raw_obs = env.get_obs(raw_obs=True)
 
                 #3# |Execute policy
                 next_obs, reward, done, info, plottable_obs, action_probs = run_policy( env=env,
@@ -237,47 +282,59 @@ def simulate_construal_policies(env: GPUDriveConstrualEnv,
                                                                                         generate_animations=generate_animations,
                                                                                     )
 
-                #3# |Record observations for each construal
-                for env_num, all_pos in enumerate(plottable_obs['pos_ego']):
-                    all_pos = torch.stack(all_pos, dim=1).unsqueeze(1)      # Reshape from [vehicles,coord] to [vehicles,1,coord] for timesteps
-                    env_name = env.data_batch[env_num]
-                    if mask_indices[env_num] in all_obs[env_name] and sample_num in all_obs[env_name][mask_indices[env_num]]:
-                        all_obs[env_name][mask_indices[env_num]][sample_num] = torch.cat([all_obs[env_name][mask_indices[env_num]][sample_num], all_pos], dim=1)
-                    elif mask_indices[env_num] not in all_obs[env_name]:
-                        all_obs[env_name][mask_indices[env_num]] = {sample_num : all_pos}                        
-                    elif sample_num not in all_obs[env_name][mask_indices[env_num]]:
-                        all_obs[env_name][mask_indices[env_num]][sample_num] = all_pos
-                    else:
-                        raise ValueError(f"Unknown Situation: {env_name}, {mask_indices[env_num]}, {sample_num}")
-                
+                #3# |Record state-action pairs
+                if save_state_action_pairs:
+                    for env_num, action_dist in enumerate(action_probs):
+                        env_name = curr_data_batch[env_num]
+                        if const_num == -1:
+                            # |Generalist policy
+                            state_action_pairs[env_name][()][sample_num].append((raw_obs[env_num], action_dist))
+                        else:
+                            # |Construal policy
+                            state_action_pairs[env_name][mask_indices[env_num]][sample_num].append((raw_obs[env_num], action_dist))
+
+                #3# |Record observations
+                if save_trajectory_obs:
+                    for env_num, all_pos in enumerate(plottable_obs['pos_ego']):
+                        all_pos = torch.stack(all_pos, dim=1).unsqueeze(1)      # Reshape from [vehicles,coord] to [vehicles,1,coord] for timesteps
+                        env_name = curr_data_batch[env_num]
+                        if const_num == -1:
+                            # |Generalist policy
+                            if all_obs[env_name][()][sample_num] is None:                                
+                                all_obs[env_name][()][sample_num] = all_pos
+                            else:
+                                all_obs[env_name][()][sample_num] = torch.cat([all_obs[env_name][()][sample_num], all_pos], dim=1)
+                        else:
+                            # |Construal policy
+                            if all_obs[env_name][mask_indices[env_num]][sample_num] is None:
+                                all_obs[env_name][mask_indices[env_num]][sample_num] = all_pos
+                            else:
+                                all_obs[env_name][mask_indices[env_num]][sample_num] = torch.cat([all_obs[env_name][mask_indices[env_num]][sample_num], all_pos], dim=1)
+
                 if done.all():
                     break
             print() # Change to new line after step prints
                 
             curr_samples.append(reward[control_mask].tolist())
 
-        #2# Convert from tensor to list for storage
-        # for env_num, env_name in enumerate(env.data_batch):
-        #     for sample_num in range(sample_size):
-        #         all_obs[env_name][mask_indices[env_num]][sample_num] = all_obs[env_name][mask_indices[env_num]][sample_num].tolist()
-
-        #2# |Calculate value (average reward) for each construal
-        curr_vals = [sum(x)/sample_size for x in zip(*curr_samples)]
-        for env_num, val in enumerate(curr_vals):
-            construal_values[env.data_batch[env_num]][mask_indices[env_num]] = val
-        print("Processed masks: ", mask_indices, ", with values:", curr_vals)
-
-        if all([mask == () for mask in mask_indices]):
-            #2# |Break loop once list of construals for all scenarios have been exhausted
-            break
-
         #2# |Save animations
         if generate_animations:
             save_animations(frames)
 
+        #2# |Calculate value (average reward) for each construal
+        if construal_size > 0:
+            curr_vals = [sum(x)/sample_size for x in zip(*curr_samples)]
+            for env_num, val in enumerate(curr_vals):
+                construal_values[curr_data_batch[env_num]][mask_indices[env_num]] = val
+            print("Processed masks: ", mask_indices, ", with values:", curr_vals)
+
+            if all([mask == () for mask in mask_indices]):
+                #2# |Break loop once list of construals for all scenarios have been exhausted
+                break
+
     #2# Extract ground-truth data
     ground_truth = {'traj': {}, 'traj_valids': {}, 'contr_veh_indices': {}}
-    for env_num, env_name in enumerate(env.data_batch):
+    for env_num, env_name in enumerate(curr_data_batch):
         ground_truth['traj'][env_name] = env.get_data_log_obj().pos_xy[env_num].tolist()
         ground_truth['traj_valids'][env_name] = env.get_data_log_obj().valids[env_num].tolist()
         ground_truth['contr_veh_indices'][env_name] = torch.where(control_mask[env_num])[0].tolist()
@@ -285,7 +342,7 @@ def simulate_construal_policies(env: GPUDriveConstrualEnv,
 
     # print("\nExpected utility by contrual: ", construal_values)
     
-    return (construal_values, all_obs, ground_truth)
+    return (construal_values, all_obs, ground_truth, state_action_pairs)
 
 
 
@@ -324,12 +381,14 @@ def simulate_selected_construal_policies(env: GPUDriveConstrualEnv,
     Returns:
 
     """
-    construal_values = {env_name: {} for env_name in env.data_batch}               # Dictionary that contains the expected utility per construal
-    all_obs = {env_name: {} for env_name in env.data_batch}                        # Dictionary that contains the observations (agent trajectories) for each construal
+    curr_data_batch = [env_path2name(env_path_) for env_path_ in env.data_batch]
+    all_obs = {env_name: {} for env_name in curr_data_batch}                        # Dictionary that contains the observations (agent trajectories) for each construal
+    state_action_pairs = {env_name: {} for env_name in curr_data_batch}             # Dictionary that contains all states and corresponding action distributions
+    construal_values = {env_name: {} for env_name in curr_data_batch}               # Dictionary that contains the expected utility per construal
     
     # |Get all construal info then filter for selected construals
-    selected_construal_info = {scene_name_: [] for scene_name_ in env.data_batch}
-    for scene_num, scene_name in enumerate(env.data_batch):
+    selected_construal_info = {scene_name_: [] for scene_name_ in curr_data_batch}
+    for scene_num, scene_name in enumerate(curr_data_batch):
         curr_env_construals = get_construals(max_agents, moving_veh_indices[scene_num], construal_size, expanded_mask = True)
         curr_env_selected_construals = selected_construals[scene_name]
         selected_construal_info[scene_name]= []
@@ -351,7 +410,7 @@ def simulate_selected_construal_policies(env: GPUDriveConstrualEnv,
 
         curr_mask_indices = [constr_info_[const_num][0] for constr_info_ in selected_construal_info.values()]
         curr_construal_masks = [constr_info_[const_num][1] for constr_info_ in selected_construal_info.values()]
-        frames = {f"env_{env_path2name(env_path_)}-constr_{const_num}-sample_{sample_num_}": [] for sample_num_ in range(sample_size) for env_path_ in env.data_batch}
+        frames = {f"env_{env_name_}-constr_{const_num}-sample_{sample_num_}": [] for sample_num_ in range(sample_size) for env_name_ in curr_data_batch}
         curr_samples = []   # Keep track of rewards
         print("Processing construals: ", curr_mask_indices)
         for sample_num in range(sample_size):
@@ -382,7 +441,7 @@ def simulate_selected_construal_policies(env: GPUDriveConstrualEnv,
                 #3# |Record observations for each construal
                 for env_num, all_pos in enumerate(plottable_obs['pos_ego']):
                     all_pos = torch.stack(all_pos, dim=1).unsqueeze(1)      # Reshape from [vehicles,coord] to [vehicles,1,coord] for timesteps
-                    env_name = env.data_batch[env_num]
+                    env_name = curr_data_batch[env_num]
                     if curr_mask_indices[env_num] in all_obs[env_name] and sample_num in all_obs[env_name][curr_mask_indices[env_num]]:
                         all_obs[env_name][curr_mask_indices[env_num]][sample_num] = torch.cat([all_obs[env_name][curr_mask_indices[env_num]][sample_num], all_pos], dim=1)
                     elif curr_mask_indices[env_num] not in all_obs[env_name]:
@@ -398,29 +457,13 @@ def simulate_selected_construal_policies(env: GPUDriveConstrualEnv,
                 
             curr_samples.append(reward[control_mask].tolist())
 
-        # #2# Convert from tensor to list for storage
-        # for env_num, env_name in enumerate(env.data_batch):
-        #     for sample_num in range(sample_size):
-        #         all_obs[env_name][curr_mask_indices[env_num]][sample_num] = all_obs[env_name][curr_mask_indices[env_num]][sample_num].tolist()
+        #2# |Save animations
+        if generate_animations:
+            save_animations(frames)
 
         if all([mask == () for mask in curr_mask_indices]):
             #2# |Break loop once list of construals for all scenarios have been exhausted
             break
-
-
-        #2# |Save animations
-        if generate_animations:
-            save_animations(frames)
-            # mediapy.set_show_save_dir('./sim_vids')
-            # mediapy.show_videos(frames, fps=15, width=500, height=500, columns=2, codec='gif')
-
-    #2# Extract ground-truth data
-    # ground_truth = {'traj': {}, 'traj_valids': {}, 'contr_veh_indices': {}}
-    # for env_num, env_name in enumerate(env.data_batch):
-    #     ground_truth['traj'][env_name] = env.get_data_log_obj().pos_xy[env_num].tolist()
-    #     ground_truth['traj_valids'][env_name] = env.get_data_log_obj().valids[env_num].tolist()
-    #     ground_truth['contr_veh_indices'][env_name] = torch.where(control_mask[env_num])[0].tolist()
-
 
     # print("\nExpected utility by contrual: ", construal_values)
     
@@ -432,190 +475,3 @@ def simulate_selected_construal_policies(env: GPUDriveConstrualEnv,
 
 
 
-
-def simulate_generalist_policies1(env: GPUDriveConstrualEnv, 
-                                total_envs: int,
-                                max_agents: int,
-                                sample_size: int,
-                                sim_agent: NeuralNet,
-                                control_mask: List,
-                                device: str,
-                                generate_animations: bool = False,
-                                ):
-    """
-    Run normal simulation and record model trajectories and values
-
-    Args:
-        env: GPUDrive simulation environment
-        total_envs: Number of scenarios being simulated
-        max_agents: Maximum number of (tracked) agents in the environment
-        sample_size: The number of samples to draw to estimate value of construals
-        sim_agent: The (pre-trained) agent model
-        control_mask: The mask specifying which agent(s) is controlled by the model
-        device: Whether use CPU or GPU for computation
-    
-    Returns (two dictionaries):
-        construal_values: Dictionary that contains the expected utility of each construal
-                            Structure: {scene_name: {construal_mask: expected_utility}}
-        all_obs: Dictionary that contains the observations (agent trajectories) for each construal
-                    Structure: {scene_name: {construal_mask: {sample_num: [vehicles,timestep,coord]}}}
-
-    """
-    model_values = {env_name: {} for env_name in env.data_batch}               # Dictionary that contains the expected utility
-    all_obs = {env_name: {} for env_name in env.data_batch}                    # Dictionary that contains the observations (agent trajectories) 
-    frames = {f"env_{env_path2name(env_path_)}-sample_{sample_num_}": [] for sample_num_ in range(sample_size) for env_path_ in env.data_batch}
-    curr_samples = []   # Keep track of reards
-    for sample_num in range(sample_size):
-        print("\tsample ", sample_num)
-        _ = env.reset()
-        next_obs = env.get_obs()
-        for time_step in range(env.episode_len):
-            # |Roll out policy for a specific construal
-            print(f"\r\t\tStep: {time_step+1}", end="", flush=True)
-
-            #2# |Execute policy
-            next_obs, reward, done, info, plottable_obs, action_probs = run_policy( env=env,
-                                                                                    sim_agent=sim_agent,
-                                                                                    next_obs=next_obs,
-                                                                                    control_mask=control_mask,
-                                                                                    construal_masks=None,
-                                                                                    time_step=time_step,
-                                                                                    total_envs=total_envs,
-                                                                                    max_agents=max_agents,
-                                                                                    device=device,
-                                                                                    frames=frames,
-                                                                                    const_num=-1,
-                                                                                    sample_num=sample_num,
-                                                                                    generate_animations=generate_animations,
-                                                                                )
-
-            #2# |Record observations
-            for env_num, all_pos in enumerate(plottable_obs['pos_ego']):
-                all_pos = torch.stack(all_pos, dim=1).unsqueeze(1)      # Reshape from [vehicles,coord] to [vehicles,1,coord] for timesteps
-                env_name = env.data_batch[env_num]
-                if sample_num in all_obs[env_name]:
-                    all_obs[env_name][sample_num] = torch.cat([all_obs[env_name][sample_num], all_pos], dim=1)
-                elif sample_num not in all_obs[env_name]:
-                    all_obs[env_name][sample_num] = all_pos
-                else:
-                    raise ValueError(f"Unknown Situation: {env_name}, {sample_num}")
-            
-            if done.all():
-                break
-        print() # Change to new line after step prints
-            
-        curr_samples.append(reward[control_mask].tolist())
-
-    #2# Convert observations from tensor to list for storage
-    for env_num in range(total_envs):
-        env_name = env.data_batch[env_num]
-        for sample_num in range(sample_size):            
-            all_obs[env_name][sample_num] = all_obs[env_name][sample_num].tolist()
-
-    #2# Extract ground-truth data
-    ground_truth = {'traj': {}, 'traj_valids': {}, 'contr_veh_indices': {}}
-    for env_num in range(total_envs):
-        ground_truth['traj'][env.data_batch[env_num]] = env.get_data_log_obj().pos_xy[env_num].tolist()
-        ground_truth['traj_valids'][env.data_batch[env_num]] = env.get_data_log_obj().valids[env_num].tolist()
-        ground_truth['contr_veh_indices'][env.data_batch[env_num]] = torch.where(control_mask[env_num])[0].tolist()
-
-    #2# |Calculate value (average reward) for each construal
-    curr_vals = [sum(x)/sample_size for x in zip(*curr_samples)]
-    for env_num, val in enumerate(curr_vals):
-        model_values[env.data_batch[env_num]] = val
-
-    #2# |Save animations
-    if generate_animations:
-        save_animations(frames)
-        # mediapy.set_show_save_dir('./sim_vids')
-        # mediapy.show_videos(frames, fps=15, width=500, height=500, columns=2, codec='gif')
-
-    # print("\nExpected utility by contrual: ", construal_values)
-    return (model_values, all_obs, ground_truth)
-
-
-
-
-
-
-
-
-def simulate_generalist_policies2(env: GPUDriveConstrualEnv, 
-                                total_envs: int,
-                                max_agents: int,
-                                sample_size: int,
-                                sim_agent: NeuralNet,
-                                control_mask: List,
-                                device: str,
-                                generate_animations: bool = False,
-                                ):
-    """
-    Run normal simulation and record states and action prob. dist. of model agent
-
-    Args:
-        env: GPUDrive simulation environment
-        total_envs: Number of scenarios being simulated
-        max_agents: Maximum number of (tracked) agents in the environment
-        sample_size: The number of samples to draw to estimate value of construals
-        sim_agent: The (pre-trained) agent model
-        control_mask: The mask specifying which agent(s) is controlled by the model
-        device: Whether use CPU or GPU for computation
-    
-    Returns (two dictionaries):
-        construal_values: Dictionary that contains the expected utility of each construal
-                            Structure: {scene_name: {construal_mask: expected_utility}}
-        all_obs: Dictionary that contains the observations (agent trajectories) for each construal
-                    Structure: {scene_name: {construal_mask: {sample_num: [vehicles,timestep,coord]}}}
-
-    """
-    state_action_pairs = {env_name: {} for env_name in env.data_batch}               # Dictionary that contains the expected utility
-    frames = {f"env_{env_path2name(env_path_)}-sample_{sample_num_}": [] for sample_num_ in range(sample_size) for env_path_ in env.data_batch}
-    for sample_num in range(sample_size):
-        print("\tsample ", sample_num)
-        _ = env.reset()
-        next_obs = env.get_obs()
-        for time_step in range(env.episode_len):
-            # |Roll out policy
-            print(f"\r\t\tStep: {time_step+1}", end="", flush=True)
-
-            #2# |Get raw observations before stepping through environment
-            raw_obs = env.get_obs(raw_obs=True)
-
-            #2# |Execute policy
-            next_obs, reward, done, info, plottable_obs, action_probs = run_policy( env=env,
-                                                                                    sim_agent=sim_agent,
-                                                                                    next_obs=next_obs,
-                                                                                    control_mask=control_mask,
-                                                                                    construal_masks=None,
-                                                                                    time_step=time_step,
-                                                                                    total_envs=total_envs,
-                                                                                    max_agents=max_agents,
-                                                                                    device=device,
-                                                                                    frames=frames,
-                                                                                    const_num=-1,
-                                                                                    sample_num=sample_num,
-                                                                                    generate_animations=generate_animations,
-                                                                                    )
-
-            #2# |Record observations
-            for env_num, action_dist in enumerate(action_probs):
-                env_name = env.data_batch[env_num]
-                if sample_num in state_action_pairs[env_name]:
-                    state_action_pairs[env_name][sample_num].append((raw_obs[env_num], action_dist))
-                elif sample_num not in state_action_pairs[env_name]:
-                    state_action_pairs[env_name][sample_num] = [(raw_obs[env_num], action_dist)]
-                else:
-                    raise ValueError(f"Unknown Situation: {env_name}, {sample_num}")
-            
-            if done.all():
-                break
-        print() # Change to new line after step prints
-
-    #2# |Save animations
-    if generate_animations:
-        save_animations(frames)
-        # mediapy.set_show_save_dir('./sim_vids')
-        # mediapy.show_videos(frames, fps=15, width=500, height=500, columns=2, codec='gif')
-
-    # print("\nExpected utility by contrual: ", construal_values)
-    return state_action_pairs

@@ -124,42 +124,45 @@ def evaluate_construals(baseline_data: Dict,
         moving_veh_indices = scene_info['moving_veh_ind']
         construal_count = get_construal_count(max_agents, moving_veh_indices, construal_size)
         prev_obs = None     # Used in code debugging below
-        for construal_num in range(construal_count):
-            construal_indices, construal_mask = get_construal_byIndex(max_agents, moving_veh_indices, construal_size, construal_num, expanded_mask=True, device=device)
-            print("Processing Construal: ", construal_indices)
-            #3# |get_construal_byIndex produces masks of shape [scenes,objs], reshape to [scenes,objs,obs]
-            # curr_masks = [list(construal_mask) for _ in range(len(construal_mask))]     # Create multiple copies of the mask, one for each vehicle
-            # [msk.pop(i) for i, msk in enumerate(curr_masks)]                            # Remove ego-vehicle entry from the mask
-            # construal_mask = torch.tensor(curr_masks)
-            true_action_dist = None
-            pred_action_dist = None
-            construal_action_likelihoods[scene_name][construal_indices] = dict()
-            for sample_num, sample in scene_info.items():
-                if sample_num == 'control_mask' or sample_num == 'max_agents' or sample_num == 'moving_veh_ind':
-                    continue
-                print("Processing Sample: ", sample_num)
-                for timestep, (raw_state, true_action_logits) in enumerate(sample):
-                    next_obs = process_state(raw_state, construal_mask, timestep)
-                    # if timestep == 0:
-                    #     #|DEBUG LOGIC
-                    #     if prev_obs is not None:
-                    #         print((next_obs==prev_obs).all())
-                    #     prev_obs = next_obs
-                    action, _, _, _, pred_action_logits = sim_agent(next_obs[control_mask], deterministic=False)
-                    curr_true_action_dist = logits_to_probs(true_action_logits).reshape(1,-1)    # Covert to prob distribution
-                    true_action_dist =  curr_true_action_dist if true_action_dist is None else torch.cat((true_action_dist, curr_true_action_dist), dim=0)
-                    curr_pred_action_dist = logits_to_probs(pred_action_logits).reshape(1,-1)    # Covert to prob distribution
-                    pred_action_dist = curr_pred_action_dist if pred_action_dist is None else torch.cat((pred_action_dist, curr_pred_action_dist), dim=0)
-                log_likelihood = [torch.log(pred_dist_[torch.argmax(tru_dist_).item()]) for tru_dist_, pred_dist_ in 
-                                                                                            zip(true_action_dist, pred_action_dist)]
-                log_likelihood_diff = [torch.log( pred_dist_[torch.argmax(tru_dist_)]/torch.max(tru_dist_) ) for tru_dist_, pred_dist_ in 
-                                                                                                                        zip(true_action_dist, pred_action_dist)]
-                # print([(torch.argmax(pred_dist_), pred_dist_[torch.argmax(pred_dist_)]) for tru_dist_, pred_dist_ in zip(true_action_dist, pred_action_dist)
-                #             if torch.argmax(tru_dist_).item() != torch.argmax(pred_dist_).item()][0])  
-                construal_action_likelihoods[scene_name][construal_indices][sample_num] = {"true_likelihoods": true_action_dist,
-                                                                               "pred_likelihoods": pred_action_dist,
-                                                                               "log_likelihood": -1*sum(log_likelihood),
-                                                                               "log_likelihood_diff": sum(log_likelihood_diff),}
+        for baseline_constr_indxs, baseline_constr_info in scene_info.items():
+            if baseline_constr_indxs == 'control_mask' or baseline_constr_indxs == 'max_agents' or \
+                baseline_constr_indxs == 'moving_veh_ind':
+                continue
+            construal_action_likelihoods[scene_name][baseline_constr_indxs] = dict()
+            for construal_num in range(construal_count):
+                test_construal_indices, test_construal_mask = get_construal_byIndex(max_agents, moving_veh_indices, 
+                                                                                    construal_size, construal_num, 
+                                                                                    expanded_mask=True, device=device)
+                true_action_dist = None
+                pred_action_dist = None
+                construal_action_likelihoods[scene_name][baseline_constr_indxs][test_construal_indices] = dict()
+                # print(f"Processing baseline construal {baseline_constr_indxs} against construal {test_construal_indices}")
+                # print(baseline_constr_info)
+                for sample_num, sample in baseline_constr_info.items():
+                    print(f"Processing baseline construal {baseline_constr_indxs} against construal {test_construal_indices}, sample {sample_num}")
+                    for timestep, (raw_state, true_action_logits) in enumerate(sample):
+                        next_obs = process_state(raw_state, test_construal_mask, timestep)
+                        # if timestep == 0:
+                        #     #|DEBUG LOGIC
+                        #     if prev_obs is not None:
+                        #         print((next_obs==prev_obs).all())
+                        #     prev_obs = next_obs
+                        action, _, _, _, pred_action_logits = sim_agent(next_obs[control_mask], deterministic=False)
+                        curr_true_action_dist = logits_to_probs(true_action_logits).reshape(1,-1)    # Covert to prob distribution
+                        true_action_dist =  curr_true_action_dist if true_action_dist is None else torch.cat((true_action_dist, curr_true_action_dist), dim=0)
+                        curr_pred_action_dist = logits_to_probs(pred_action_logits).reshape(1,-1)    # Covert to prob distribution
+                        pred_action_dist = curr_pred_action_dist if pred_action_dist is None else torch.cat((pred_action_dist, curr_pred_action_dist), dim=0)
+                    log_likelihood = [torch.log(pred_dist_[torch.argmax(tru_dist_).item()]) for tru_dist_, pred_dist_ in 
+                                                                                                zip(true_action_dist, pred_action_dist)]
+                    log_likelihood_diff = [torch.log( pred_dist_[torch.argmax(tru_dist_)]/torch.max(tru_dist_) ) for tru_dist_, pred_dist_ in 
+                                                                                                                            zip(true_action_dist, pred_action_dist)]
+                    # print([(torch.argmax(pred_dist_), pred_dist_[torch.argmax(pred_dist_)]) for tru_dist_, pred_dist_ in zip(true_action_dist, pred_action_dist)
+                    #             if torch.argmax(tru_dist_).item() != torch.argmax(pred_dist_).item()][0])  
+                    construal_action_likelihoods[scene_name][baseline_constr_indxs][test_construal_indices][sample_num] = \
+                                                                                {"true_likelihoods": true_action_dist,
+                                                                                "pred_likelihoods": pred_action_dist,
+                                                                                "log_likelihood": -1*sum(log_likelihood),
+                                                                                "log_likelihood_diff": sum(log_likelihood_diff),}
 
     # |Save log likelihood moeasures to file
     savefl_path = out_dir+"log_likelihood_measures_"+str(datetime.now())+".pickle"
@@ -190,23 +193,28 @@ def get_best_construals_likelihood( construal_action_likelihoods: Dict,
     avg_dict = {}
     for scn_name, scn_info in construal_action_likelihoods.items():
         avg_dict[scn_name] = {}
-        for constr, constr_info in scn_info.items():
-            likelihoods = [curr_info_[likelihood_key].item() for curr_info_ in constr_info.values()]
-            avg_dict[scn_name][constr] = sum(likelihoods) / len(likelihoods)
-            # print(f"scn_name: {scn_name}, constr: {constr}, likelihoods: {avg_dict[scn_name][constr]}")
+        for base_constr, base_constr_info in scn_info.items():
+            avg_dict[scn_name][base_constr] = {}
+            print(base_constr_info)
+            for test_constr, test_constr_info in base_constr_info.items():
+                likelihoods = [curr_info_[likelihood_key].item() for curr_info_ in test_constr_info.values()]
+                avg_dict[scn_name][base_constr][test_constr] = sum(likelihoods) / len(likelihoods)
+                # print(f"scn_name: {scn_name}, constr: {constr}, likelihoods: {avg_dict[scn_name][constr]}")
 
     # |Get the best construals
     scene_constr_dict = {}
     for scn_name, scn_info in avg_dict.items():
-        scene_constr_dict[scn_name] = (min(scn_info, key=scn_info.get), min(scn_info.values()))
-        # print(f"Best construal for {scn_name}: {best_construals[scn_name]} with likelihood {avg_dict[scn_name][best_construals[scn_name]]}")
-        if scene_constr_dict[scn_name][0] != ():
-            # The empty construal is always the second element in the list
-            scene_constr_dict[scn_name] = [scene_constr_dict[scn_name], ((), scn_info[()])]
-        else:
-            # Get second highest values (best-fit construal)
-            curr_constr = sorted(scn_info, key=scn_info.get)[1]
-            scene_constr_dict[scn_name] = [(curr_constr, scn_info[curr_constr]), scene_constr_dict[scn_name]]        
+        scene_constr_dict[scn_name] = {}
+        for base_constr, base_constr_info in scn_info.items():
+            scene_constr_dict[scn_name][base_constr] = (min(base_constr_info, key=base_constr_info.get), min(base_constr_info.values()))
+            # print(f"Best construal for {scn_name}: {best_construals[scn_name]} with likelihood {avg_dict[scn_name][best_construals[scn_name]]}")
+            if scene_constr_dict[scn_name][base_constr][0] != ():
+                # The empty construal is always the second element in the list
+                scene_constr_dict[scn_name][base_constr] = [scene_constr_dict[scn_name], ((), base_constr_info[()])]
+            else:
+                # Get second highest values (best-fit construal)
+                curr_constr = sorted(base_constr_info, key=base_constr_info.get)[1]
+                scene_constr_dict[scn_name][base_constr] = [(curr_constr, base_constr_info[curr_constr]), scene_constr_dict[scn_name]]        
         
     savefl_path = out_dir+f"highest_construal_dict_{likelihood_key}_"+str(datetime.now())+".pickle"
     with open(savefl_path, 'wb') as file:

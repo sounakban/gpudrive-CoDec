@@ -1,6 +1,7 @@
 # |Default library imports
 from copy import deepcopy
 from functools import cache
+from locale import normalize
 from os import listdir
 import json
 import pickle
@@ -43,9 +44,8 @@ from gpudrive.env.dataset import SceneDataLoader
 from gpudrive.utils.config import load_config
 
 # |CoDec imports
-from examples.CoDec_Research.code.simulation.simulation_functions import simulate_construal_policies, \
-                                    simulate_generalist_policies1, simulate_generalist_policies2, \
-                                    simulate_selected_construal_policies
+from examples.CoDec_Research.code.simulation.simulation_functions import simulate_policies, simulate_selected_construal_policies
+from examples.CoDec_Research.code.construal_functions import get_construal_veh_distance
 
 
 ##############################################
@@ -165,6 +165,11 @@ def get_gpuDrive_vars(training_config,
 
 
 
+# Function to extract filename from path
+env_path2name = lambda path: path.split("/")[-1].split(".")[0]
+
+
+
 def generate_all_construal_trajnval(out_dir: str,
                                 sim_agent: NeuralNet,
                                 observed_agents_count: int,
@@ -183,7 +188,7 @@ def generate_all_construal_trajnval(out_dir: str,
     """
 
     construal_values = {"dict_structure": '{scene_name: {construal_index: value}}'}
-    all_obs = {"dict_structure": '{scene_name: {construal_index: {sample_num: 3Dmatrix[vehicles,timestep,coord]}}}'}
+    traj_obs = {"dict_structure": '{scene_name: {construal_index: {sample_num: 3Dmatrix[vehicles,timestep,coord]}}}'}
     ground_truth = {"dict_structure": '{"traj": {scene_name: 3Dmatrix[vehicles,timestep,coord]}, "traj_valids": {scene_name: 3Dmatrix[vehicles,timestep,bool]}, "contr_veh_indices": {scene_name: list[controlled_vehicles]} }'}
 
     # |Loop through all batches
@@ -202,19 +207,20 @@ def generate_all_construal_trajnval(out_dir: str,
         control_mask = env.cont_agent_mask
 
         # |Simulate on Construals
-        construal_values_, all_obs_, ground_truth_ = simulate_construal_policies(env = env,
-                                                            observed_agents_count = observed_agents_count,
-                                                            construal_size= construal_size,
-                                                            total_envs = num_parallel_envs,
-                                                            max_agents = max_agents,
-                                                            moving_veh_indices = moving_veh_indices,
-                                                            sample_size = sample_size,
-                                                            sim_agent = sim_agent,
-                                                            control_mask = control_mask,
-                                                            device = device,
-                                                            generate_animations = generate_animations)
+        construal_values_, traj_obs_, ground_truth_, _ = simulate_policies(env = env,
+                                                                        observed_agents_count = observed_agents_count,
+                                                                        construal_size= construal_size,
+                                                                        total_envs = num_parallel_envs,
+                                                                        max_agents = max_agents,
+                                                                        moving_veh_indices = moving_veh_indices,
+                                                                        sample_size = sample_size,
+                                                                        sim_agent = sim_agent,
+                                                                        control_mask = control_mask,
+                                                                        device = device,
+                                                                        generate_animations = generate_animations,
+                                                                        save_trajectory_obs=True)
         construal_values.update(construal_values_)
-        all_obs.update(all_obs_)
+        traj_obs.update(traj_obs_)
         ground_truth.update(ground_truth_)
 
     # |Save the construal value information to a file
@@ -225,7 +231,7 @@ def generate_all_construal_trajnval(out_dir: str,
     # |Save the construal trajectory information to a file
     savefl_path = out_dir+"all_constr_obs_"+str(datetime.now())+".pickle"
     with open(savefl_path, 'wb') as file:
-        pickle.dump(all_obs, file, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(traj_obs, file, protocol=pickle.HIGHEST_PROTOCOL)
     print("Baseline data saved to: ", savefl_path)
     # |Save the ground truth information to a file
     savefl_path = out_dir+"ground_truth_"+str(datetime.now())+".pickle"
@@ -233,11 +239,13 @@ def generate_all_construal_trajnval(out_dir: str,
         pickle.dump(ground_truth, file, protocol=pickle.HIGHEST_PROTOCOL)
     print("Baseline data saved to: ", savefl_path)
 
+    return construal_values, traj_obs, ground_truth
 
 
 
 
-def generate_selected_construal_trajnval(out_dir: str,
+
+def generate_selected_construal_traj(out_dir: str,
                                         sim_agent: NeuralNet,
                                         observed_agents_count: int,
                                         construal_size: int,
@@ -289,8 +297,6 @@ def generate_selected_construal_trajnval(out_dir: str,
 
     with open(out_dir+"selected_constr_obs_"+str(datetime.now())+".txt", 'w') as file:
         file.write(str(all_obs))
-    # with open(out_dir+"ground_truth_"+str(datetime.now())+".txt", 'w') as file:
-    #     file.write(str(ground_truth))
 
 
 
@@ -306,6 +312,9 @@ def generate_baseline_data( out_dir: str,
                             train_loader: SceneDataLoader,
                             env: GPUDriveConstrualEnv,
                             env_multi_agent: GPUDriveConstrualEnv,
+                            observed_agents_count: int = 0,
+                            construal_size: int = 0,
+                            selected_construals: Dict[str, List[Tuple[int]]] = None,
                             generate_animations: bool = False,
                             ) -> None:
     """
@@ -319,49 +328,37 @@ def generate_baseline_data( out_dir: str,
         #2# |BATCHING LOGIC: https://github.com/Emerge-Lab/gpudrive/blob/bd618895acde90d8c7d880b32d87942efe42e21d/examples/experimental/eval_utils.py#L316
         #2# |Update simulator with the new batch of data
         env.swap_data_batch(batch)
-
         env_multi_agent.swap_data_batch(batch)
         control_mask = env.cont_agent_mask
-
-        #2# |Simulate on Construals
-        state_action_pairs_ = simulate_generalist_policies2(env = env, 
-                                                            total_envs = num_parallel_envs,
-                                                            max_agents = max_agents,
-                                                            sample_size = sample_size,
-                                                            sim_agent = sim_agent,
-                                                            control_mask = control_mask,
-                                                            device = device,
-                                                            generate_animations = generate_animations,
-                                                            )
+        curr_data_batch = [env_path2name(env_path_) for env_path_ in env.data_batch]
         
         #2# |Get moving vehicle information
         moving_veh_mask = env_multi_agent.cont_agent_mask
         moving_veh_indices = [tuple([i for i, val in enumerate(mask) if val]) for mask in moving_veh_mask]
         # print("Indices of all moving vehicles (by scene): ", moving_veh_indices)
 
-        for scene_num, scene_name in enumerate(env.data_batch):
+        #2# |Simulate on Construals
+        _, _, _, state_action_pairs_ = simulate_policies(env = env, 
+                                                        total_envs = num_parallel_envs,
+                                                        max_agents = max_agents,
+                                                        sample_size = sample_size,
+                                                        sim_agent = sim_agent,
+                                                        control_mask = control_mask,
+                                                        device = device,
+                                                        observed_agents_count = observed_agents_count,
+                                                        moving_veh_indices = moving_veh_indices,
+                                                        construal_size = construal_size,
+                                                        selected_construals = selected_construals,
+                                                        generate_animations = generate_animations,
+                                                        save_state_action_pairs=True,
+                                                        )
+
+        for scene_num, scene_name in enumerate(curr_data_batch):
             #2# |Add environment config metadata
             state_action_pairs_[scene_name]["control_mask"] = env.cont_agent_mask[scene_num]
             state_action_pairs_[scene_name]["max_agents"] = env.config.max_controlled_agents
             state_action_pairs_[scene_name]["moving_veh_ind"] = moving_veh_indices[scene_num]
         state_action_pairs.update(state_action_pairs_)
-
-    # # |Convert tensors to list before saving
-    # for scene_name, samples in state_action_pairs.items():
-    #     if scene_name == "dict_structure":
-    #         # This is a metadata entry and should not be processed
-    #         continue
-    #     for sample_num, sample in samples.items():
-    #         list_var = []
-    #         for timestep, (raw_states, action_probs) in enumerate(sample):
-    #             raw_states = (raw_states[0].tolist(), raw_states[1].tolist(), raw_states[2].tolist())
-    #             action_probs = action_probs.tolist()
-    #             list_var.append((raw_states, action_probs))
-    #         state_action_pairs[scene_name][sample_num] = list_var
-
-    # # |Save the state-action pairs to a file
-    # with open(out_dir+"baseline_state_action_pairs"+str(datetime.now())+".txt", 'w') as file:
-    #     file.write(str(state_action_pairs))
 
     # |Save the state-action pairs to a file
     savefl_path = out_dir+"baseline_state_action_pairs_"+str(datetime.now())+".pickle"
@@ -370,6 +367,78 @@ def generate_baseline_data( out_dir: str,
     print("Baseline data saved to: ", savefl_path)
 
     return state_action_pairs
+
+
+
+
+
+def get_constral_heurisrtic_values(env: GPUDriveConstrualEnv, train_loader: SceneDataLoader,
+                                   default_values: dict, heuristic: int = 0, average: bool = True,
+                                   heuristic_params: dict = None, normalize:bool = True) -> dict:
+    '''
+    Get the construal values based on some heuristic on average or for each vehicle in the construal
+
+    Args:
+        env: The environment object
+        default_values: Dictionary containing the default values for all construals in  each scene
+        average: If true, return the average construal value for all vehicles in the construal
+        heuristic: The heuristic to use for the construal value
+            0: Default construal values
+            1: Distance from ego vehicle
+            2: -
+            3: -
+            4: -
+            5: -
+        heuristic_params: Dictionary containing the parameters for the heuristic. Keys:
+            "dist_ego": parameter for (ego) distance heuristic
+        normalize: If true, return the normalized [0,1] heuristics values for all construals
+                    using min-max scaling
+
+    Returns:
+        The average distance or a list of distances from the ego vehicle to each vehicle in the construal
+    '''
+    construal_indices = {scene_name: construal_info.keys() for scene_name, construal_info in default_values.items()
+                                                                                if scene_name != "dict_structure"}
+    if heuristic == 0:
+        result_dict = default_values
+    elif heuristic == 1:
+        distances = {}
+        for batch in tqdm(train_loader, desc=f"Processing Waymo batches",
+                            total=len(train_loader), colour="blue"):
+            #2# |BATCHING LOGIC: https://github.com/Emerge-Lab/gpudrive/blob/bd618895acde90d8c7d880b32d87942efe42e21d/examples/experimental/eval_utils.py#L316
+            #2# |Update simulator with the new batch of data
+            env.swap_data_batch(batch)
+            distances_ = get_construal_veh_distance(env, construal_indices, average=average, normalize=normalize)
+            distances.update(distances_)
+        # print("Distances: ", distances)
+        result_dict = dict()
+        if average:
+            for scene_name, construal_info in default_values.items():
+                if scene_name == "dict_structure":
+                    # This is a metadata entry and should not be processed
+                    continue
+                result_dict[scene_name] = dict()
+                for construal_index, construal_val in construal_info.items():
+                    result_dict[scene_name][construal_index] = construal_val - heuristic_params["dist_ego"]*distances[scene_name][construal_index]
+        else:
+            print("Logic for non-averaged values has not been defined yet")
+            result_dict = default_values
+    else:
+        print("Heuristic not implemented yet")
+        result_dict = default_values
+        
+    return result_dict
+
+
+
+
+
+
+
+
+
+
+
 
 
 

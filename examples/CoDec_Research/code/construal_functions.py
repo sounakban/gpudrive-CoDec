@@ -1,5 +1,6 @@
 # |Default library imports
 from copy import deepcopy
+from curses import raw
 from functools import cache
 import json
 from unittest import result
@@ -22,6 +23,9 @@ from zmq import device
 from gpudrive.env.env_torch import GPUDriveConstrualEnv
 
 
+
+# Function to extract filename from path
+env_path2name = lambda path: path.split("/")[-1].split(".")[0]
 
 
 
@@ -140,6 +144,36 @@ def get_construal_byIndex(total_obj_count: int,
 
 
 
+def get_selected_construal_byIndex(total_obj_count: int,
+                                    target_obj_indices: List,
+                                    construal_size: int,
+                                    indx: int, 
+                                    selected_construals: dict,
+                                    expanded_mask: bool = False,
+                                    device: str = 'cpu'):
+    '''
+    Create construed masks based on complete mask and objects of interest
+
+    Args:
+        total_obj_count: Total number of objects (used to determine length of mask)
+        target_obj_indices: A list of indices containing all objects of interest in the bollean list
+        construal_size: Size of each contrual
+        indx: The construal number
+        selected_construals: Dictionary containing the selected construals for each scene
+        expanded_mask: If True, return the expanded mask of shape [objects, observations]
+                        If False, return the construal indices and mask of shape [objects]
+
+    Returns:
+        Tuple of construal object indices and coorresponding mask (boolean list).
+        If index is greater than number of constrauls it returns a default value, with no observable objects
+    '''
+    all_construals = get_construals(total_obj_count, target_obj_indices, construal_size, expanded_mask, device)
+    selected_construal_indices = list(selected_construals.keys())
+    selected_construal_info = [curr_constr_info_ for curr_constr_info_ in all_construals.values() if curr_constr_info_[0] in selected_construal_indices]
+    return selected_construal_info[indx]
+
+
+
 def get_construal_count(total_obs_count, target_obj_indices, construal_size):
     '''
     Get the number of construals given number of objects of interest and construal size
@@ -166,7 +200,8 @@ euclidean_distance = lambda point1, point2: math.sqrt(sum([(a - b) ** 2 for a, b
 
 
 ### Generate Construal Heuristic Values (Heuristic 1: Distance from ego) ###
-def get_construal_veh_distance(env: GPUDriveConstrualEnv, construal_indices: tuple, average: bool = True):
+def get_construal_veh_distance(env: GPUDriveConstrualEnv, construal_indices: tuple, average: bool = True,
+                               normalize: bool = False):
     '''
     Get the (average or) distance of each vehicle in the construal to the ego vehicle
 
@@ -178,9 +213,10 @@ def get_construal_veh_distance(env: GPUDriveConstrualEnv, construal_indices: tup
     Returns:
         The average distance or a list of distances from the ego vehicle to each vehicle in the construal
     '''
+    curr_data_batch = [env_path2name(env_path_) for env_path_ in env.data_batch]
     # |Populate dictionary will all relevant information
     info_dict = dict()
-    for env_num, env_name in enumerate(env.data_batch):
+    for env_num, env_name in enumerate(curr_data_batch):
         info_dict[env_name] = dict()
         info_dict[env_name]['ego_index'] = torch.where(env.cont_agent_mask[env_num])[0].item()
         info_dict[env_name]['construal_indices'] = construal_indices[env_name]
@@ -188,14 +224,23 @@ def get_construal_veh_distance(env: GPUDriveConstrualEnv, construal_indices: tup
     # |Get all vehicle distances
     all_pos = env.get_data_log_obj().pos_xy
     distance_dict = dict()
-    for env_num, env_name in enumerate(env.data_batch):
-        
+
+    for env_num, env_name in enumerate(curr_data_batch):
         distance_dict[env_name] = dict()
+        all_distances = [euclidean_distance(all_pos[env_num][info_dict[env_name]['ego_index']][0].cpu().numpy(),
+                                            all_pos[env_num][i][0].cpu().numpy()) 
+                            for i in range(len(all_pos[env_num]))]  
+              
+        if normalize:
+            #2# |Normalize distances to [0,1] using min-max scaling 
+            all_distances = (np.array(all_distances) - np.min(all_distances)) / (np.max(all_distances) - np.min(all_distances))
+
         for curr_indices in info_dict[env_name]['construal_indices']:
-            distance_dict[env_name][curr_indices] = [euclidean_distance(all_pos[env_num][info_dict[env_name]['ego_index']][0].cpu().numpy(), 
-                                                                        all_pos[env_num][i][0].cpu().numpy()) 
-                                                        for i in curr_indices]
+            distance_dict[env_name][curr_indices] = [all_distances[i] for i in curr_indices]
             if average:
-                distance_dict[env_name][curr_indices] = sum(distance_dict[env_name][curr_indices])/len(distance_dict[env_name][curr_indices])
-        
+                if len(distance_dict[env_name][curr_indices]) > 0:
+                    distance_dict[env_name][curr_indices] = sum(distance_dict[env_name][curr_indices])/len(distance_dict[env_name][curr_indices])
+                else:
+                    distance_dict[env_name][curr_indices] = 0
+
     return distance_dict
