@@ -130,11 +130,12 @@ def evaluate_construals(baseline_data: Dict,
                 continue
             construal_action_likelihoods[scene_name][baseline_constr_indxs] = dict()
             for construal_num in range(construal_count):
-                test_construal_indices, test_construal_mask = get_construal_byIndex(max_agents, moving_veh_indices, 
+                (test_construal_indices, test_construal_mask), _ = get_construal_byIndex(max_agents, moving_veh_indices, 
                                                                                     construal_size, construal_num, 
                                                                                     expanded_mask=True, device=device)
                 true_action_dist = None
                 pred_action_dist = None
+                print(baseline_constr_indxs,test_construal_indices)
                 construal_action_likelihoods[scene_name][baseline_constr_indxs][test_construal_indices] = dict()
                 # print(f"Processing baseline construal {baseline_constr_indxs} against construal {test_construal_indices}")
                 # print(baseline_constr_info)
@@ -195,7 +196,7 @@ def get_best_construals_likelihood( construal_action_likelihoods: Dict,
         avg_dict[scn_name] = {}
         for base_constr, base_constr_info in scn_info.items():
             avg_dict[scn_name][base_constr] = {}
-            print(base_constr_info)
+            # print(base_constr_info)
             for test_constr, test_constr_info in base_constr_info.items():
                 likelihoods = [curr_info_[likelihood_key].item() for curr_info_ in test_constr_info.values()]
                 avg_dict[scn_name][base_constr][test_constr] = sum(likelihoods) / len(likelihoods)
@@ -208,13 +209,14 @@ def get_best_construals_likelihood( construal_action_likelihoods: Dict,
         for base_constr, base_constr_info in scn_info.items():
             scene_constr_dict[scn_name][base_constr] = (min(base_constr_info, key=base_constr_info.get), min(base_constr_info.values()))
             # print(f"Best construal for {scn_name}: {best_construals[scn_name]} with likelihood {avg_dict[scn_name][best_construals[scn_name]]}")
-            if scene_constr_dict[scn_name][base_constr][0] != ():
-                # The empty construal is always the second element in the list
-                scene_constr_dict[scn_name][base_constr] = [scene_constr_dict[scn_name], ((), base_constr_info[()])]
-            else:
-                # Get second highest values (best-fit construal)
-                curr_constr = sorted(base_constr_info, key=base_constr_info.get)[1]
-                scene_constr_dict[scn_name][base_constr] = [(curr_constr, base_constr_info[curr_constr]), scene_constr_dict[scn_name]]        
+            # if scene_constr_dict[scn_name][base_constr][0] != ():
+            #     # The empty construal is always the second element in the list
+            #     scene_constr_dict[scn_name][base_constr] = [scene_constr_dict[scn_name][base_constr], ((), base_constr_info[()])]
+            # else:
+            #     # Get second highest values (best-fit construal)
+            #     curr_constr = sorted(base_constr_info, key=base_constr_info.get)[1]
+            #     scene_constr_dict[scn_name][base_constr] = [(curr_constr, base_constr_info[curr_constr]), scene_constr_dict[scn_name][base_constr]]   
+
         
     savefl_path = out_dir+f"highest_construal_dict_{likelihood_key}_"+str(datetime.now())+".pickle"
     with open(savefl_path, 'wb') as file:

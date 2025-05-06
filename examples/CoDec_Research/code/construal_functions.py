@@ -18,6 +18,7 @@ from typing import Any, List, Tuple
 import os
 from pathlib import Path
 
+from traitlets import default
 from zmq import device
 
 from gpudrive.env.env_torch import GPUDriveConstrualEnv
@@ -105,9 +106,9 @@ def get_construals( total_obj_count: int,
         construal_info[construal_num] = (construal_indices, curr_mask)
     # |Default construal where all vehicles are observed
     if expanded_mask:
-        construal_info['default'] = ((), expand_construal_mask([False,]*total_obj_count))
+        construal_info['default'] = (target_obj_indices, expand_construal_mask([False,]*total_obj_count))
     else:
-        construal_info['default'] = ((), [False,]*total_obj_count)
+        construal_info['default'] = (target_obj_indices, [False,]*total_obj_count)
     return construal_info
 
 
@@ -136,10 +137,10 @@ def get_construal_byIndex(total_obj_count: int,
     '''
     all_construals = get_construals(total_obj_count, target_obj_indices, construal_size, expanded_mask, device)
     if indx in all_construals.keys():
-        return all_construals[indx]
+        return (all_construals[indx], False)
     else:
         # If index out of bounds, return default construal
-        return all_construals['default']
+        return (all_construals['default'], True)
     
 
 
@@ -170,7 +171,7 @@ def get_selected_construal_byIndex(total_obj_count: int,
     all_construals = get_construals(total_obj_count, target_obj_indices, construal_size, expanded_mask, device)
     selected_construal_indices = list(selected_construals.keys())
     selected_construal_info = [curr_constr_info_ for curr_constr_info_ in all_construals.values() if curr_constr_info_[0] in selected_construal_indices]
-    return selected_construal_info[indx]
+    return (selected_construal_info[indx], False) if indx < len(selected_construal_info) else (selected_construal_info[-1], True)
 
 
 

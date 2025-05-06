@@ -3,6 +3,7 @@ from copy import deepcopy
 from functools import cache
 import json
 
+from pydantic import constr
 from scipy.special import softmax
 import numpy as np
 import math
@@ -237,21 +238,23 @@ def simulate_policies(env: GPUDriveConstrualEnv,
                                                                  const_num, selected_construals[sene_name_], expanded_mask=True, \
                                                                  device=device) 
                                     for scene_num_, sene_name_ in enumerate(curr_data_batch)]
+            
+            construal_info, construal_done = zip(*construal_info)
             mask_indices, construal_masks = zip(*construal_info)   # Unzip construal masks
             #3# |Create empty dictionaries to store information
-            for env_num, env_name in enumerate(curr_data_batch):
-                all_obs[env_name][mask_indices[env_num]] = {sample_num_: None for sample_num_ in range(sample_size)}
-                state_action_pairs[env_name][mask_indices[env_num]] = {sample_num_: [] for sample_num_ in range(sample_size)}                
-                frames = {f"env_{env_name}-constr_{const_num}-sample_{sample_num_}": [] for sample_num_ in range(sample_size)}
+            for scene_num, scene_name in enumerate(curr_data_batch):
+                all_obs[scene_name][mask_indices[scene_num]] = {sample_num_: None for sample_num_ in range(sample_size)}
+                state_action_pairs[scene_name][mask_indices[scene_num]] = {sample_num_: [] for sample_num_ in range(sample_size)}                
+                frames = {f"env_{scene_name}-constr_{const_num}-sample_{sample_num_}": [] for sample_num_ in range(sample_size)}
         else:
             #2# |IF only simulating generalist policy
             construal_masks = None
             const_num = -1
             #3# |Create empty dictionaries to store information
-            for env_name in curr_data_batch:
-                all_obs[env_name][()] = {sample_num_: None for sample_num_ in range(sample_size)}
-                state_action_pairs[env_name][()] = {sample_num_: [] for sample_num_ in range(sample_size)}                
-                frames = {f"env_{env_name}-sample_{sample_num_}": [] for sample_num_ in range(sample_size)}
+            for scene_num, scene_name in enumerate(curr_data_batch):
+                all_obs[scene_name][moving_veh_indices[scene_num]] = {sample_num_: None for sample_num_ in range(sample_size)}
+                state_action_pairs[scene_name][moving_veh_indices[scene_num]] = {sample_num_: [] for sample_num_ in range(sample_size)}                
+                frames = {f"env_{scene_name}-sample_{sample_num_}": [] for sample_num_ in range(sample_size)}
         
         curr_samples = []   # Keep track of rewards
         for sample_num in range(sample_size):
@@ -284,32 +287,32 @@ def simulate_policies(env: GPUDriveConstrualEnv,
 
                 #3# |Record state-action pairs
                 if save_state_action_pairs:
-                    for env_num, action_dist in enumerate(action_probs):
-                        env_name = curr_data_batch[env_num]
+                    for scene_num, action_dist in enumerate(action_probs):
+                        scene_name = curr_data_batch[scene_num]
                         if const_num == -1:
                             # |Generalist policy
-                            state_action_pairs[env_name][()][sample_num].append((raw_obs[env_num], action_dist))
+                            state_action_pairs[scene_name][moving_veh_indices[scene_num]][sample_num].append((raw_obs[scene_num], action_dist))
                         else:
                             # |Construal policy
-                            state_action_pairs[env_name][mask_indices[env_num]][sample_num].append((raw_obs[env_num], action_dist))
+                            state_action_pairs[scene_name][mask_indices[scene_num]][sample_num].append((raw_obs[scene_num], action_dist))
 
                 #3# |Record observations
                 if save_trajectory_obs:
-                    for env_num, all_pos in enumerate(plottable_obs['pos_ego']):
+                    for scene_num, all_pos in enumerate(plottable_obs['pos_ego']):
                         all_pos = torch.stack(all_pos, dim=1).unsqueeze(1)      # Reshape from [vehicles,coord] to [vehicles,1,coord] for timesteps
-                        env_name = curr_data_batch[env_num]
+                        scene_name = curr_data_batch[scene_num]
                         if const_num == -1:
                             # |Generalist policy
-                            if all_obs[env_name][()][sample_num] is None:                                
-                                all_obs[env_name][()][sample_num] = all_pos
+                            if all_obs[scene_name][moving_veh_indices[scene_num]][sample_num] is None:                                
+                                all_obs[scene_name][moving_veh_indices[scene_num]][sample_num] = all_pos
                             else:
-                                all_obs[env_name][()][sample_num] = torch.cat([all_obs[env_name][()][sample_num], all_pos], dim=1)
+                                all_obs[scene_name][moving_veh_indices[scene_num]][sample_num] = torch.cat([all_obs[scene_name][moving_veh_indices[scene_num]][sample_num], all_pos], dim=1)
                         else:
                             # |Construal policy
-                            if all_obs[env_name][mask_indices[env_num]][sample_num] is None:
-                                all_obs[env_name][mask_indices[env_num]][sample_num] = all_pos
+                            if all_obs[scene_name][mask_indices[scene_num]][sample_num] is None:
+                                all_obs[scene_name][mask_indices[scene_num]][sample_num] = all_pos
                             else:
-                                all_obs[env_name][mask_indices[env_num]][sample_num] = torch.cat([all_obs[env_name][mask_indices[env_num]][sample_num], all_pos], dim=1)
+                                all_obs[scene_name][mask_indices[scene_num]][sample_num] = torch.cat([all_obs[scene_name][mask_indices[scene_num]][sample_num], all_pos], dim=1)
 
                 if done.all():
                     break
@@ -324,20 +327,21 @@ def simulate_policies(env: GPUDriveConstrualEnv,
         #2# |Calculate value (average reward) for each construal
         if construal_size > 0:
             curr_vals = [sum(x)/sample_size for x in zip(*curr_samples)]
-            for env_num, val in enumerate(curr_vals):
-                construal_values[curr_data_batch[env_num]][mask_indices[env_num]] = val
+            for scene_num, val in enumerate(curr_vals):
+                construal_values[curr_data_batch[scene_num]][mask_indices[scene_num]] = val
             print("Processed masks: ", mask_indices, ", with values:", curr_vals)
 
-            if all([mask == () for mask in mask_indices]):
+            # if all([mask == () for mask in mask_indices]):
+            if all(construal_done):
                 #2# |Break loop once list of construals for all scenarios have been exhausted
                 break
 
     #2# Extract ground-truth data
     ground_truth = {'traj': {}, 'traj_valids': {}, 'contr_veh_indices': {}}
-    for env_num, env_name in enumerate(curr_data_batch):
-        ground_truth['traj'][env_name] = env.get_data_log_obj().pos_xy[env_num].tolist()
-        ground_truth['traj_valids'][env_name] = env.get_data_log_obj().valids[env_num].tolist()
-        ground_truth['contr_veh_indices'][env_name] = torch.where(control_mask[env_num])[0].tolist()
+    for scene_num, scene_name in enumerate(curr_data_batch):
+        ground_truth['traj'][scene_name] = env.get_data_log_obj().pos_xy[scene_num].tolist()
+        ground_truth['traj_valids'][scene_name] = env.get_data_log_obj().valids[scene_num].tolist()
+        ground_truth['contr_veh_indices'][scene_name] = torch.where(control_mask[scene_num])[0].tolist()
 
 
     # print("\nExpected utility by contrual: ", construal_values)
