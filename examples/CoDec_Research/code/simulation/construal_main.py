@@ -45,7 +45,7 @@ from gpudrive.utils.config import load_config
 
 # |CoDec imports
 from examples.CoDec_Research.code.simulation.simulation_functions import simulate_policies, simulate_selected_construal_policies
-from examples.CoDec_Research.code.construal_functions import get_construal_veh_distance
+from examples.CoDec_Research.code.construal_functions import get_construal_veh_distance_ego
 
 
 ##############################################
@@ -373,8 +373,8 @@ def generate_baseline_data( out_dir: str,
 
 
 def get_constral_heurisrtic_values(env: GPUDriveConstrualEnv, train_loader: SceneDataLoader,
-                                   default_values: dict, heuristic: int = 0, average: bool = True,
-                                   heuristic_params: dict = None, normalize:bool = True) -> dict:
+                                   default_values: dict, heuristic_params: dict = None, 
+                                   average: bool = True,  normalize:bool = True) -> dict:
     '''
     Get the construal values based on some heuristic on average or for each vehicle in the construal
 
@@ -390,42 +390,37 @@ def get_constral_heurisrtic_values(env: GPUDriveConstrualEnv, train_loader: Scen
             4: -
             5: -
         heuristic_params: Dictionary containing the parameters for the heuristic. Keys:
-            "dist_ego": parameter for (ego) distance heuristic
+            "ego_distance": parameter for (ego) distance heuristic
         normalize: If true, return the normalized [0,1] heuristics values for all construals
                     using min-max scaling
 
     Returns:
         The average distance or a list of distances from the ego vehicle to each vehicle in the construal
     '''
+    heuristics_to_func = {"ego_distance": get_construal_veh_distance_ego,}
+    active_heuristics = {heuristics_to_func[curr_heuristic_]: curr_heuristic_val_
+                            for curr_heuristic_, curr_heuristic_val_ in heuristic_params.items()}
+    
     construal_indices = {scene_name: construal_info.keys() for scene_name, construal_info in default_values.items()
                                                                                 if scene_name != "dict_structure"}
-    if heuristic == 0:
-        result_dict = default_values
-    elif heuristic == 1:
-        distances = {}
-        for batch in tqdm(train_loader, desc=f"Processing Waymo batches",
-                            total=len(train_loader), colour="blue"):
-            #2# |BATCHING LOGIC: https://github.com/Emerge-Lab/gpudrive/blob/bd618895acde90d8c7d880b32d87942efe42e21d/examples/experimental/eval_utils.py#L316
-            #2# |Update simulator with the new batch of data
-            env.swap_data_batch(batch)
-            distances_ = get_construal_veh_distance(env, construal_indices, average=average, normalize=normalize)
-            distances.update(distances_)
-        # print("Distances: ", distances)
-        result_dict = dict()
-        if average:
-            for scene_name, construal_info in default_values.items():
-                if scene_name == "dict_structure":
-                    # This is a metadata entry and should not be processed
-                    continue
-                result_dict[scene_name] = dict()
-                for construal_index, construal_val in construal_info.items():
-                    result_dict[scene_name][construal_index] = construal_val - heuristic_params["dist_ego"]*distances[scene_name][construal_index]
-        else:
-            print("Logic for non-averaged values has not been defined yet")
-            result_dict = default_values
-    else:
-        print("Heuristic not implemented yet")
-        result_dict = default_values
+
+    result_dict = dict()
+    for batch in tqdm(train_loader, desc=f"Processing Waymo batches",
+                        total=len(train_loader), colour="blue"):
+        #2# |BATCHING LOGIC: https://github.com/Emerge-Lab/gpudrive/blob/bd618895acde90d8c7d880b32d87942efe42e21d/examples/experimental/eval_utils.py#L316
+        #2# |Update simulator with the new batch of data
+        env.swap_data_batch(batch)
+        heuristics_vars = [(curr_heuristic_func_(env, construal_indices, average=average, normalize=normalize), 
+                            curr_heuristic_val_)
+                                for curr_heuristic_func_, curr_heuristic_val_ in active_heuristics.items()]
+        curr_data_batch = [env_path2name(env_path_) for env_path_ in env.data_batch]
+        for scene_num, scene_name in enumerate(curr_data_batch):
+            result_dict[scene_name] = dict()
+            construal_info = default_values[scene_name]            
+            for construal_index, construal_val in construal_info.items():
+                curr_heuristic_penalty = sum(curr_heuristic_val_*curr_heuristic_dict_[scene_name][construal_index]
+                                                for curr_heuristic_dict_, curr_heuristic_val_ in heuristics_vars)
+                result_dict[scene_name][construal_index] = construal_val + curr_heuristic_penalty
         
     return result_dict
 

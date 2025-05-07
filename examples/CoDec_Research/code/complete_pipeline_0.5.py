@@ -205,7 +205,7 @@ elif construal_selection_logic == "heuristic_1":
                                                         generate_animations=False)
 
     #2# |Generate Construal Heuristic Values (Heuristic 1: Distance from ego)
-    scene_constr_dict = get_constral_heurisrtic_values(env, default_values, heuristic=1, heuristic_params=heuristic_params)
+    scene_constr_dict = get_constral_heurisrtic_values(env, default_values, heuristic_params=heuristic_params)
 
 else:
     raise ValueError("Construal selection logic not supported yet. Please use either 'log_likelihood' or 'heuristic_1'.")

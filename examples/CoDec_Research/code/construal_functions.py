@@ -3,7 +3,7 @@ from copy import deepcopy
 from curses import raw
 from functools import cache
 import json
-from unittest import result
+from frozendict import frozendict
 
 import torch
 from scipy.special import softmax
@@ -201,7 +201,7 @@ euclidean_distance = lambda point1, point2: math.sqrt(sum([(a - b) ** 2 for a, b
 
 
 ### Generate Construal Heuristic Values (Heuristic 1: Distance from ego) ###
-def get_construal_veh_distance(env: GPUDriveConstrualEnv, construal_indices: tuple, average: bool = True,
+def get_construal_veh_distance_ego(env: GPUDriveConstrualEnv, construal_indices: tuple, average: bool = True,
                                normalize: bool = False):
     '''
     Get the (average or) distance of each vehicle in the construal to the ego vehicle
@@ -215,7 +215,7 @@ def get_construal_veh_distance(env: GPUDriveConstrualEnv, construal_indices: tup
         The average distance or a list of distances from the ego vehicle to each vehicle in the construal
     '''
     curr_data_batch = [env_path2name(env_path_) for env_path_ in env.data_batch]
-    # |Populate dictionary will all relevant information
+    # |Populate dictionary with all relevant information
     info_dict = dict()
     for env_num, env_name in enumerate(curr_data_batch):
         info_dict[env_name] = dict()
@@ -240,8 +240,9 @@ def get_construal_veh_distance(env: GPUDriveConstrualEnv, construal_indices: tup
             distance_dict[env_name][curr_indices] = [all_distances[i] for i in curr_indices]
             if average:
                 if len(distance_dict[env_name][curr_indices]) > 0:
-                    distance_dict[env_name][curr_indices] = sum(distance_dict[env_name][curr_indices])/len(distance_dict[env_name][curr_indices])
+                    # Multiplied by -1 as distance is a penalty term, greater values are associated with higher penalty
+                    distance_dict[env_name][curr_indices] = -1*sum(distance_dict[env_name][curr_indices])/len(distance_dict[env_name][curr_indices])
                 else:
                     distance_dict[env_name][curr_indices] = 0
-
+                    
     return distance_dict

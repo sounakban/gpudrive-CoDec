@@ -4,6 +4,7 @@ from os import listdir
 import json
 import pickle
 from datetime import datetime
+from functools import partial
 
 from scipy.special import softmax
 import numpy as np
@@ -45,15 +46,13 @@ from examples.CoDec_Research.code.analysis.evaluate_construal_actions import eva
 
 
 
-
 ####################################################
 ################ SET EXP PARAMETERS ################
 ####################################################
 
+
 ### Parameters for Inference ###
-construal_selection_logic = "heuristic_1" # Set Construal Selection Logic. 
-                                          # Options: "log_likelihood", "heuristic_1", "heuristic_2", "heuristic_3"
-heuristic_params = {"dist_ego": 0.5} # Parameters for weighing the heuristics
+heuristic_params = {"ego_distance": 0.5} # Parameters for weighing the heuristics
 
 ### Specify Environment Configuration ###
 
@@ -102,66 +101,65 @@ env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
 
 
 
-#################################################
-################ LOG LIKELIHOODS ################
-#################################################
+
+#############################################
+################ SIMULATIONS ################
+#############################################
+
 
 
 ### Select Construals for Baseline Data ###
 scene_constr_dict = None
-if construal_selection_logic == "heuristic_1":
-    # |Select construals based on heuristic 1 (distance from ego)
 
-    #2# |Generate Construal Execution Values through simulator sampling
-    default_values = None
+#2# |Generate Construal Execution Values through simulator sampling
+default_values = None
 
-    #2# |Check if saved data is available
-    simulation_results_files = [simulation_results_path+fl_name for fl_name in listdir(simulation_results_path)]
-    for srFile in simulation_results_files:
-        if "construal_vals" in srFile:
-            with open(srFile, 'rb') as opn_file:
-                default_values = pickle.load(opn_file)
-        else:
-            continue
+#2# |Check if saved data is available
+for srFile in simulation_results_files:
+    if "construal_vals" in srFile:
+        with open(srFile, 'rb') as opn_file:
+            default_values = pickle.load(opn_file)
+    else:
+        continue
 
-    if default_values is None:
-        default_values, traj_obs, ground_truth = generate_all_construal_trajnval(out_dir=out_dir,
-                                                                                    sim_agent=sim_agent,
-                                                                                    observed_agents_count=observed_agents_count,
-                                                                                    construal_size=construal_size,
-                                                                                    num_parallel_envs=num_parallel_envs,
-                                                                                    max_agents=max_agents,
-                                                                                    sample_size=sample_size,
-                                                                                    device=device,
-                                                                                    train_loader=train_loader,
-                                                                                    env=env,
-                                                                                    env_multi_agent=env_multi_agent,
-                                                                                    generate_animations=False)
+if default_values is None:
+    default_values, traj_obs, ground_truth = generate_all_construal_trajnval(out_dir=out_dir,
+                                                                                sim_agent=sim_agent,
+                                                                                observed_agents_count=observed_agents_count,
+                                                                                construal_size=construal_size,
+                                                                                num_parallel_envs=num_parallel_envs,
+                                                                                max_agents=max_agents,
+                                                                                sample_size=sample_size,
+                                                                                device=device,
+                                                                                train_loader=train_loader,
+                                                                                env=env,
+                                                                                env_multi_agent=env_multi_agent,
+                                                                                generate_animations=False)
 
-    #2# |Generate Construal Heuristic Values (Heuristic 1: Distance from ego)
-    heuristic_values = get_constral_heurisrtic_values(env, train_loader, default_values, heuristic=1, heuristic_params=heuristic_params)
+#2# |Generate Construal Heuristic Values (Heuristic 1: Distance from ego)
+heuristic_values = get_constral_heurisrtic_values(env, train_loader, default_values, heuristic_params=heuristic_params)
 
-    #2# |Sample from construal values
-    def sample_construals(heuristic_values: dict, sample_count: int) -> dict:
-        """
-        Sample construals based on heuristic values.
-        """
-        sampled_construals = {}
-        for scene_name, construal_info in heuristic_values.items():
-            constr_indices, constr_values = zip(*construal_info.items())
-            constr_values_softmax = torch.nn.functional.softmax(torch.tensor(constr_values), dim=0)
-            sampled_indices = torch.multinomial(constr_values_softmax, num_samples=sample_count, \
-                                                               replacement=False).tolist()
-            sampled_construals[scene_name] = {constr_indices[i]: constr_values[i] for i in sampled_indices}
+#2# |Sample from construal values
+def sample_construals(heuristic_values: dict, sample_count: int) -> dict:
+    """
+    Sample construals based on heuristic values.
+    """
+    sampled_construals = {}
+    for scene_name, construal_info in heuristic_values.items():
+        constr_indices, constr_values = zip(*construal_info.items())
+        constr_values_softmax = torch.nn.functional.softmax(torch.tensor(constr_values), dim=0)
+        sampled_indices = torch.multinomial(constr_values_softmax, num_samples=sample_count, \
+                                                            replacement=False).tolist()
+        sampled_construals[scene_name] = {constr_indices[i]: constr_values[i] for i in sampled_indices}
 
-        return sampled_construals
-    
-    scene_constr_dict = sample_construals(heuristic_values, sample_count=2)
+    return sampled_construals
+
+scene_constr_dict = sample_construals(heuristic_values, sample_count=2)
 
 
 
 
-### Generate Trajectories For Selected Construals (Baseline Data on Which to Perform Inference) ###
+### Generate Synthetic Ground Truth for Selected Construals (Baseline Data on Which to Perform Inference) ###
 state_action_pairs = None
 
 # |Check if saved data is available
@@ -188,6 +186,15 @@ if state_action_pairs is None:
 
 
 
+
+
+
+
+#####################################################
+################ CONSTRUAL INFERENCE ################
+#####################################################
+
+
 ### Compute Construal Log Likelihoods ###
 construal_action_likelihoods = None
 
@@ -206,19 +213,63 @@ del state_action_pairs
 
 
 
-### Sanity Check ###
-for scene_name_, scene_info_ in construal_action_likelihoods.items():
-    print(f"Scene: {scene_name_}")
-    for base_construal_name_, base_construal_info_ in scene_info_.items():
-        print_dict = {}
-        for test_construal_name_, test_construal_info_ in base_construal_info_.items():
-            for sample_num_, sample_info_ in test_construal_info_.items():
-                print_dict.update({(base_construal_name_, test_construal_name_, sample_num_): abs(sample_info_['log_likelihood_diff'])})
-                # print_dict.update({(base_construal_name_, test_construal_name_, sample_num_): sample_info_['log_likelihood']})
-        print(dict(sorted(print_dict.items(), key=lambda item: item[1])))
+
+### DEBUG: Sanity Check ###
+# scene_constr_dict = None
+# scene_constr_diff_dict = None
+
+# # |Check if saved data is available
+# for srFile in simulation_results_files:
+#     if "highest_construal_dict_log_likelihood_diff" in srFile:
+#         with open(srFile, 'rb') as opn_file:
+#             scene_constr_diff_dict = pickle.load(opn_file)
+#     if "highest_construal_dict_log_likelihood" in srFile:
+#         with open(srFile, 'rb') as opn_file:
+#             scene_constr_dict = pickle.load(opn_file)
+
+# if scene_constr_dict is None:
+#     scene_constr_dict = get_best_construals_likelihood(construal_action_likelihoods, out_dir)
+# if scene_constr_diff_dict is None:
+#     scene_constr_diff_dict = get_best_construals_likelihood(construal_action_likelihoods, out_dir, likelihood_key="log_likelihood_diff")
+
+# for scene_name_, scene_info_ in construal_action_likelihoods.items():
+#     print(f"Scene: {scene_name_}")
+#     for base_construal_name_, base_construal_info_ in scene_info_.items():
+#         print_dict = {}
+#         for test_construal_name_, test_construal_info_ in base_construal_info_.items():
+#             for sample_num_, sample_info_ in test_construal_info_.items():
+#                 # print_dict.update({(base_construal_name_, test_construal_name_, sample_num_): abs(sample_info_['log_likelihood_diff'])})
+#                 print_dict.update({(base_construal_name_, test_construal_name_, sample_num_): sample_info_['log_likelihood']})
+#         print(dict(sorted(print_dict.items(), key=lambda item: item[1])))
 
 
 
-#####################################################
-################ CONSTRUAL INFERENCE ################
-#####################################################
+
+
+### Inference Logic ###
+
+# |Get probability of lambda values
+get_constral_heurisrtic_values_partial = partial(get_constral_heurisrtic_values, env=env, 
+                                                 train_loader=train_loader, default_values=default_values)
+p_lambda = {}
+for curr_lambda in np.linspace(0,1,11):
+    curr_lambda = curr_lambda.item()
+    heuristic_params = {"ego_distance": curr_lambda}
+    curr_heuristic_values = get_constral_heurisrtic_values_partial(heuristic_params=heuristic_params)
+    p_lambda[curr_lambda] = {}
+    for scene_name, scene_info in curr_heuristic_values.items():
+        p_lambda[curr_lambda][scene_name] = {}
+        sampled_construals = construal_action_likelihoods[scene_name]
+        for base_construal, construal_info in sampled_construals.items():
+            curr_p_lambda = []
+            for construal_indx, construal_heur_value in scene_info.items():
+                sample_num = 0
+                p_a = -1*construal_info[construal_indx][sample_num]['log_likelihood'].item()
+                curr_p_lambda.append(( torch.exp(torch.tensor(p_a))*construal_heur_value.item() ).item())
+            p_lambda[curr_lambda][scene_name][base_construal] = sum(curr_p_lambda)/len(curr_p_lambda)
+
+# |Get product over lambda probability across sampled construals
+lamda_inference = {}
+for curr_lambda, scene_info in p_lambda.items():
+    lamda_inference[curr_lambda] = np.prod([val for scene_name, construal_info in scene_info.items() for val in construal_info.values() if val > 0])
+print(lamda_inference)
