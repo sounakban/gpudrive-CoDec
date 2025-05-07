@@ -45,7 +45,7 @@ from gpudrive.utils.config import load_config
 
 # |CoDec imports
 from examples.CoDec_Research.code.simulation.simulation_functions import simulate_policies, simulate_selected_construal_policies
-from examples.CoDec_Research.code.construal_functions import get_construal_veh_distance_ego
+from examples.CoDec_Research.code.construal_functions import get_construal_veh_distance_ego, get_construal_cardinality
 
 
 ##############################################
@@ -397,7 +397,8 @@ def get_constral_heurisrtic_values(env: GPUDriveConstrualEnv, train_loader: Scen
     Returns:
         The average distance or a list of distances from the ego vehicle to each vehicle in the construal
     '''
-    heuristics_to_func = {"ego_distance": get_construal_veh_distance_ego,}
+    heuristics_to_func = {"ego_distance": get_construal_veh_distance_ego,
+                          "cardinality": get_construal_cardinality,}
     active_heuristics = {heuristics_to_func[curr_heuristic_]: curr_heuristic_val_
                             for curr_heuristic_, curr_heuristic_val_ in heuristic_params.items()}
     
@@ -420,8 +421,12 @@ def get_constral_heurisrtic_values(env: GPUDriveConstrualEnv, train_loader: Scen
             for construal_index, construal_val in construal_info.items():
                 curr_heuristic_penalty = sum(curr_heuristic_val_*curr_heuristic_dict_[scene_name][construal_index]
                                                 for curr_heuristic_dict_, curr_heuristic_val_ in heuristics_vars)
-                result_dict[scene_name][construal_index] = construal_val + curr_heuristic_penalty
-        
+                result_dict[scene_name][construal_index] = construal_val + curr_heuristic_penalty  
+            # |Softmax construal values          
+            constr_indices, constr_values = zip(*result_dict[scene_name].items())
+            constr_values_softmax = torch.nn.functional.softmax(torch.tensor(constr_values), dim=0)
+            result_dict[scene_name] = {curr_index_: curr_values_softmax_.item() for 
+                                        curr_index_, curr_values_softmax_ in zip(constr_indices, constr_values_softmax)}
     return result_dict
 
 

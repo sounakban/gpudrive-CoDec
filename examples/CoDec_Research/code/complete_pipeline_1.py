@@ -51,8 +51,12 @@ from examples.CoDec_Research.code.analysis.evaluate_construal_actions import eva
 ####################################################
 
 
-### Parameters for Inference ###
-heuristic_params = {"ego_distance": 0.5} # Parameters for weighing the heuristics
+# Parameters for Inference
+heuristic_params = {"ego_distance": 0.5, "cardinality": 1} # Hueristics and their weight parameters (to be inferred)
+
+construal_count_baseline = 2 # Number of construals to sample for baseline data generation
+trajectory_count_baseline = 2 # Number of baseline trajectories to generate per construal
+
 
 ### Specify Environment Configuration ###
 
@@ -71,19 +75,21 @@ dataset_path = 'data/processed/construal'
 
 # |Set simulator config
 max_agents = training_config.max_controlled_agents   # Get total vehicle count
-num_parallel_envs = 2
-total_envs = 4
-device = "cpu" # cpu just because we're in a notebook
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+num_parallel_envs = 25
+total_envs = 25
+# device = "cpu" # cpu just because we're in a notebook
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # |Set construal config
 construal_size = 1
 observed_agents_count = max_agents - 1      # Agents observed except self (used for vector sizes)
-sample_size = 1                             # Number of samples to calculate expected utility of a construal
+sample_size_utility = 40                     # Number of samples to calculate expected utility of a construal
 
 # |Other changes to variables
 training_config.max_controlled_agents = 1    # Control only the first vehicle in the environment
 total_envs = min(total_envs, len(listdir(dataset_path)))
+
+
 
 
 ### Instantiate Variables ###
@@ -111,7 +117,7 @@ env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
 ### Select Construals for Baseline Data ###
 scene_constr_dict = None
 
-#2# |Generate Construal Execution Values through simulator sampling
+# |Compute construal  utilities through simulator sampling
 default_values = None
 
 #2# |Check if saved data is available
@@ -129,17 +135,17 @@ if default_values is None:
                                                                                 construal_size=construal_size,
                                                                                 num_parallel_envs=num_parallel_envs,
                                                                                 max_agents=max_agents,
-                                                                                sample_size=sample_size,
+                                                                                sample_size=sample_size_utility,
                                                                                 device=device,
                                                                                 train_loader=train_loader,
                                                                                 env=env,
                                                                                 env_multi_agent=env_multi_agent,
                                                                                 generate_animations=False)
 
-#2# |Generate Construal Heuristic Values (Heuristic 1: Distance from ego)
+# |Generate Construal Heuristic Values
 heuristic_values = get_constral_heurisrtic_values(env, train_loader, default_values, heuristic_params=heuristic_params)
 
-#2# |Sample from construal values
+# |Sample construals for generating baseline data
 def sample_construals(heuristic_values: dict, sample_count: int) -> dict:
     """
     Sample construals based on heuristic values.
@@ -147,14 +153,14 @@ def sample_construals(heuristic_values: dict, sample_count: int) -> dict:
     sampled_construals = {}
     for scene_name, construal_info in heuristic_values.items():
         constr_indices, constr_values = zip(*construal_info.items())
-        constr_values_softmax = torch.nn.functional.softmax(torch.tensor(constr_values), dim=0)
-        sampled_indices = torch.multinomial(constr_values_softmax, num_samples=sample_count, \
-                                                            replacement=False).tolist()
+        sampled_indices = torch.multinomial(torch.tensor(constr_values), num_samples=sample_count, \
+                                                replacement=False).tolist()
         sampled_construals[scene_name] = {constr_indices[i]: constr_values[i] for i in sampled_indices}
+        print(f"Sampled construals for scene {scene_name}: {sampled_construals[scene_name].keys()}")
 
     return sampled_construals
 
-scene_constr_dict = sample_construals(heuristic_values, sample_count=2)
+scene_constr_dict = sample_construals(heuristic_values, sample_count=construal_count_baseline)
 
 
 
@@ -174,7 +180,7 @@ if state_action_pairs is None:
                                                 sim_agent=sim_agent,
                                                 num_parallel_envs=num_parallel_envs,
                                                 max_agents=max_agents,
-                                                sample_size=1,
+                                                sample_size=trajectory_count_baseline,
                                                 device=device,
                                                 train_loader=train_loader,
                                                 env=env,
@@ -191,7 +197,7 @@ if state_action_pairs is None:
 
 
 #####################################################
-################ CONSTRUAL INFERENCE ################
+################ PARAMETER INFERENCE ################
 #####################################################
 
 
@@ -252,21 +258,26 @@ del state_action_pairs
 get_constral_heurisrtic_values_partial = partial(get_constral_heurisrtic_values, env=env, 
                                                  train_loader=train_loader, default_values=default_values)
 p_lambda = {}
+curr_heuristic_params = deepcopy(heuristic_params)
 for curr_lambda in np.linspace(0,1,11):
     curr_lambda = curr_lambda.item()
-    heuristic_params = {"ego_distance": curr_lambda}
-    curr_heuristic_values = get_constral_heurisrtic_values_partial(heuristic_params=heuristic_params)
+    curr_heuristic_params["ego_distance"] = curr_lambda
+    curr_heuristic_values = get_constral_heurisrtic_values_partial(heuristic_params=curr_heuristic_params)
     p_lambda[curr_lambda] = {}
-    for scene_name, scene_info in curr_heuristic_values.items():
+
+    for scene_name, sampled_construals in construal_action_likelihoods.items():
         p_lambda[curr_lambda][scene_name] = {}
-        sampled_construals = construal_action_likelihoods[scene_name]
-        for base_construal, construal_info in sampled_construals.items():
-            curr_p_lambda = []
-            for construal_indx, construal_heur_value in scene_info.items():
-                sample_num = 0
-                p_a = -1*construal_info[construal_indx][sample_num]['log_likelihood'].item()
-                curr_p_lambda.append(( torch.exp(torch.tensor(p_a))*construal_heur_value.item() ).item())
-            p_lambda[curr_lambda][scene_name][base_construal] = sum(curr_p_lambda)/len(curr_p_lambda)
+        for base_construal, base_construal_info in sampled_construals.items():
+            p_lambda[curr_lambda][scene_name][base_construal] = []
+            for test_construal, test_construal_info in base_construal_info.items():
+                curr_p_lambda = []
+                for sample_num, sample_info in test_construal_info.items():
+                    p_a = torch.exp( -1*sample_info['log_likelihood'] ).item()
+                    construal_heur_value = curr_heuristic_values[scene_name][test_construal]
+                    curr_p_lambda.append(p_a*construal_heur_value)
+                curr_p_lambda = np.prod([val for val in curr_p_lambda if val > 0])
+                p_lambda[curr_lambda][scene_name][base_construal].append(curr_p_lambda)
+            p_lambda[curr_lambda][scene_name][base_construal] = sum(p_lambda[curr_lambda][scene_name][base_construal])
 
 # |Get product over lambda probability across sampled construals
 lamda_inference = {}

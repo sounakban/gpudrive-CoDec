@@ -200,19 +200,20 @@ euclidean_distance = lambda point1, point2: math.sqrt(sum([(a - b) ** 2 for a, b
 
 
 
-### Generate Construal Heuristic Values (Heuristic 1: Distance from ego) ###
-def get_construal_veh_distance_ego(env: GPUDriveConstrualEnv, construal_indices: tuple, average: bool = True,
+### Construal Heuristic 1: Distance from ego ###
+def get_construal_veh_distance_ego(env: GPUDriveConstrualEnv, construal_indices: dict, average: bool = True,
                                normalize: bool = False):
     '''
-    Get the (average or) distance of each vehicle in the construal to the ego vehicle
+    Get the distance of each vehicle (or average) in the construal to the ego vehicle
 
     Args:
         env: The environment object
-        construal_indices: A list of indices containing all objects of interest in the bollean list
+        construal_indices: A dictionary whose values are lists of indices corresponding to each construal in a scene
         average: If true, return the average distance of all vehicles in the construal to the ego vehicle
+        normalize: If true, normalize distances of all vehicles for each scene to [0,1], using min-max scaling
 
     Returns:
-        The average distance or a list of distances from the ego vehicle to each vehicle in the construal
+        dict: The average distance or a list of distances from the ego vehicle to each vehicle in the construal
     '''
     curr_data_batch = [env_path2name(env_path_) for env_path_ in env.data_batch]
     # |Populate dictionary with all relevant information
@@ -234,15 +235,44 @@ def get_construal_veh_distance_ego(env: GPUDriveConstrualEnv, construal_indices:
               
         if normalize:
             #2# |Normalize distances to [0,1] using min-max scaling 
-            all_distances = (np.array(all_distances) - np.min(all_distances)) / (np.max(all_distances) - np.min(all_distances))
+            #2# |Multiplied by -1 as distance is a penalty term, greater values are associated with higher penalty
+            all_distances = -1*( (np.array(all_distances) - np.min(all_distances)) / (np.max(all_distances) - np.min(all_distances)) )
 
         for curr_indices in info_dict[env_name]['construal_indices']:
             distance_dict[env_name][curr_indices] = [all_distances[i] for i in curr_indices]
             if average:
                 if len(distance_dict[env_name][curr_indices]) > 0:
-                    # Multiplied by -1 as distance is a penalty term, greater values are associated with higher penalty
-                    distance_dict[env_name][curr_indices] = -1*sum(distance_dict[env_name][curr_indices])/len(distance_dict[env_name][curr_indices])
+                    distance_dict[env_name][curr_indices] = sum(distance_dict[env_name][curr_indices])/len(distance_dict[env_name][curr_indices])
                 else:
                     distance_dict[env_name][curr_indices] = 0
                     
     return distance_dict
+
+
+
+### Construal Heuristic 2: Cardinality ###
+def get_construal_cardinality(env: GPUDriveConstrualEnv, construal_indices: dict, average: bool = True,
+                               normalize: bool = False): 
+    '''
+    Get the cardinality of each construal
+
+    Args:
+        env: The environment object
+        construal_indices: A dictionary whose values are lists of indices corresponding to each construal in a scene
+        average: Unused for this logic, but included for consistency
+        normalize: If true, normalize cardinality values of all construals in each scene to [0,1], using min-max scaling
+
+    Returns:
+        dict: Cardinality values for each construal
+    '''
+    cardinality_dict = dict()
+    for scene_name, scene_construal_indices in construal_indices.items():
+        curr_cardinalities = {indices: len(indices) for indices in scene_construal_indices}
+        min_cardinality = min(curr_cardinalities.values())
+        max_cardinality = max(curr_cardinalities.values())  
+        if normalize:
+            #2# |Normalize cardinalities to [0,1] using min-max scaling 
+            #2# |Multiplied by -1 as cardinality is a penalty term, greater values are associated with higher penalty
+            curr_cardinalities = {indices: -1*( (cardinality_ - min_cardinality) / (max_cardinality - min_cardinality) ) for indices, cardinality_ in curr_cardinalities.items()}
+        cardinality_dict[scene_name] = curr_cardinalities
+    return cardinality_dict
