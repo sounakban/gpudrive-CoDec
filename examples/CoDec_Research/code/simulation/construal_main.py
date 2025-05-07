@@ -46,6 +46,7 @@ from gpudrive.utils.config import load_config
 # |CoDec imports
 from examples.CoDec_Research.code.simulation.simulation_functions import simulate_policies, simulate_selected_construal_policies
 from examples.CoDec_Research.code.construal_functions import get_construal_veh_distance_ego, get_construal_cardinality
+from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars
 
 
 ##############################################
@@ -66,94 +67,20 @@ dataset_path = 'data/processed/construal'
 
 # |Set simulator config
 max_agents = training_config.max_controlled_agents   # Get total vehicle count
-num_parallel_envs = 25
-total_envs = 25
-# device = "cpu" # cpu just because we're in a notebook
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+num_parallel_envs = 2
+total_envs = 2
+device = "cpu" # cpu just because we're in a notebook
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # |Set construal config
 construal_size = 1
 observed_agents_count = max_agents - 1      # Agents observed except self (used for vector sizes)
-sample_size = 50                            # Number of samples to calculate expected utility of a construal
+sample_size = 2                            # Number of samples to calculate expected utility of a construal
 
 # |Other changes to variables
 training_config.max_controlled_agents = 1    # Control only the first vehicle in the environment
 total_envs = min(total_envs, len(listdir(dataset_path)))
 
-
-
-#############################################################
-################### INSTANTIATE VARIABLES ###################
-#############################################################
-
-def get_gpuDrive_vars(training_config, 
-                      device: str, 
-                      num_parallel_envs: int, 
-                      dataset_path: str,
-                      max_agents: int, 
-                      total_envs: int,
-                      sim_agent_path: str = "daphne-cornelisse/policy_S10_000_02_27",
-                      ):
-    # |Create environment config
-    env_config = dataclasses.replace(
-        EnvConfig(),
-        ego_state=training_config.ego_state,
-        road_map_obs=training_config.road_map_obs,
-        partner_obs=training_config.partner_obs,
-        reward_type=training_config.reward_type,
-        norm_obs=training_config.norm_obs,
-        dynamics_model=training_config.dynamics_model,
-        collision_behavior=training_config.collision_behavior,
-        dist_to_goal_threshold=training_config.dist_to_goal_threshold,
-        polyline_reduction_threshold=0.2 if device == "cpu" else training_config.polyline_reduction_threshold,
-        remove_non_vehicles=training_config.remove_non_vehicles,
-        lidar_obs=training_config.lidar_obs,
-        disable_classic_obs=training_config.lidar_obs,
-        obs_radius=training_config.obs_radius,
-        steer_actions = torch.round(
-            torch.linspace(-torch.pi, torch.pi, training_config.action_space_steer_disc), decimals=3  
-        ),
-        accel_actions = torch.round(
-            torch.linspace(-4.0, 4.0, training_config.action_space_accel_disc), decimals=3
-        ),
-    )
-
-    # |Create data loader
-    train_loader = SceneDataLoader(
-        root=dataset_path,
-        batch_size=num_parallel_envs,
-        dataset_size=max(total_envs,num_parallel_envs),
-        sample_with_replacement=False,
-    )
-
-    # |Make env [Original]
-    # env = GPUDriveTorchEnv(
-    #     config=env_config,
-    #     data_loader=train_loader,
-    #     max_cont_agents=config.max_controlled_agents,
-    #     device=device,
-    # )
-
-    # |Make env [Construal]
-    env = GPUDriveConstrualEnv(
-        config=env_config,
-        data_loader=train_loader,
-        max_cont_agents=training_config.max_controlled_agents,
-        device=device,
-    )
-
-    # |Create multi-agent environment to get information about moving vehicles
-    env_multi_agent = GPUDriveConstrualEnv(
-                        config=env_config,
-                        data_loader=train_loader,
-                        max_cont_agents=max_agents,
-                        device="cpu",
-                        )
-
-    # |Import Pre-trained Model
-    sim_agent = NeuralNet.from_pretrained(sim_agent_path).to(device)
-
-    return (env_config, train_loader, env, env_multi_agent, sim_agent)
 
 
 
@@ -439,13 +366,9 @@ def get_constral_heurisrtic_values(env: GPUDriveConstrualEnv, train_loader: Scen
 
 
 
-
-
-
-
-
-
-
+#################################################
+################### MAIN TEST ###################
+#################################################
     
 if __name__ == "__main__":
     start_time = time.perf_counter()

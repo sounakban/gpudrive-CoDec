@@ -44,7 +44,8 @@ from examples.CoDec_Research.code.analysis.evaluate_construal_actions import eva
 
 
 
-
+# |START TIMER
+start_time = time.perf_counter()
 
 ####################################################
 ################ SET EXP PARAMETERS ################
@@ -83,7 +84,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # |Set construal config
 construal_size = 1
 observed_agents_count = max_agents - 1      # Agents observed except self (used for vector sizes)
-sample_size_utility = 40                     # Number of samples to calculate expected utility of a construal
+sample_size_utility = 40                    # Number of samples to compute expected utility of a construal
 
 # |Other changes to variables
 training_config.max_controlled_agents = 1    # Control only the first vehicle in the environment
@@ -284,3 +285,7 @@ lamda_inference = {}
 for curr_lambda, scene_info in p_lambda.items():
     lamda_inference[curr_lambda] = np.prod([val for scene_name, construal_info in scene_info.items() for val in construal_info.values() if val > 0])
 print(lamda_inference)
+
+# |Print the execution time
+execution_time = time.perf_counter() - start_time
+print(f"Execution time: {math.floor(execution_time/60)} minutes and {execution_time%60:.1f} seconds")
