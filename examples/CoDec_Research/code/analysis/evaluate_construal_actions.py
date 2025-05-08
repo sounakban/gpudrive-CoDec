@@ -26,7 +26,7 @@ sys.path.append(str(working_dir))
 
 
 # |Import CoDec Libraries
-from examples.CoDec_Research.code.construal_functions import get_construal_byIndex, get_construal_count
+from examples.CoDec_Research.code.construals.construal_functions import get_construal_byIndex, get_construal_count
 from examples.CoDec_Research.code.analysis.metrics import log_likelihood
 
 

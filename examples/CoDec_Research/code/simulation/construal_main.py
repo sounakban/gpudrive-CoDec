@@ -45,7 +45,7 @@ from gpudrive.utils.config import load_config
 
 # |CoDec imports
 from examples.CoDec_Research.code.simulation.simulation_functions import simulate_policies, simulate_selected_construal_policies
-from examples.CoDec_Research.code.construal_functions import get_construal_veh_distance_ego, get_construal_cardinality
+from examples.CoDec_Research.code.construals.construal_functions import get_construal_veh_distance_ego, get_construal_cardinality
 from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars
 
 

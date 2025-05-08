@@ -55,8 +55,8 @@ start_time = time.perf_counter()
 # Parameters for Inference
 heuristic_params = {"ego_distance": 0.5, "cardinality": 1} # Hueristics and their weight parameters (to be inferred)
 
-construal_count_baseline = 2 # Number of construals to sample for baseline data generation
-trajectory_count_baseline = 2 # Number of baseline trajectories to generate per construal
+construal_count_baseline = 3 # Number of construals to sample for baseline data generation
+trajectory_count_baseline = 3 # Number of baseline trajectories to generate per construal
 
 
 ### Specify Environment Configuration ###
@@ -84,7 +84,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # |Set construal config
 construal_size = 1
 observed_agents_count = max_agents - 1      # Agents observed except self (used for vector sizes)
-sample_size_utility = 40                    # Number of samples to compute expected utility of a construal
+sample_size_utility = 45                    # Number of samples to compute expected utility of a construal
 
 # |Other changes to variables
 training_config.max_controlled_agents = 1    # Control only the first vehicle in the environment
@@ -289,3 +289,27 @@ print(lamda_inference)
 # |Print the execution time
 execution_time = time.perf_counter() - start_time
 print(f"Execution time: {math.floor(execution_time/60)} minutes and {execution_time%60:.1f} seconds")
+
+
+
+
+
+### Convert Results to Pandas Table and Save ###
+import pandas as pd
+
+construal_action_likelihoods_df = {(scene,baseC,testC,sample): construal_action_likelihoods[scene][baseC][testC][sample]['log_likelihood'].item()
+                                        for scene in construal_action_likelihoods.keys() 
+                                        for baseC in construal_action_likelihoods[scene].keys() 
+                                        for testC in construal_action_likelihoods[scene][baseC].keys() 
+                                        for sample in construal_action_likelihoods[scene][baseC][testC].keys()}
+
+multi_index = pd.MultiIndex.from_tuples(construal_action_likelihoods_df.keys(), names=['scene', 'base_construal', 'test_construal', 'sample'])
+construal_action_likelihoods_df = pd.DataFrame(construal_action_likelihoods_df.values(), index=multi_index)
+construal_action_likelihoods_df.columns = ['-log_likelihood']
+
+construal_action_likelihoods_summarydf = construal_action_likelihoods_df.groupby(level=(0,1,2)).mean().sort_values(by='-log_likelihood', ascending=True).\
+                                            groupby(level=(0,1)).head(5).sort_index(level=(0,1), sort_remaining=False)
+
+
+construal_action_likelihoods_df.to_csv(out_dir + "construal_action_likelihoods.tsv", sep="\t", index=True, header=True)
+construal_action_likelihoods_summarydf.to_csv(out_dir + "construal_action_likelihoods_summary.tsv", sep="\t", index=True, header=True)
