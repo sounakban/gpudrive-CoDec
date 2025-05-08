@@ -55,7 +55,7 @@ start_time = time.perf_counter()
 # Parameters for Inference
 heuristic_params = {"ego_distance": 0.5, "cardinality": 1} # Hueristics and their weight parameters (to be inferred)
 
-construal_count_baseline = 3 # Number of construals to sample for baseline data generation
+construal_count_baseline = 2 # Number of construals to sample for baseline data generation
 trajectory_count_baseline = 3 # Number of baseline trajectories to generate per construal
 
 
@@ -126,11 +126,13 @@ for srFile in simulation_results_files:
     if "construal_vals" in srFile:
         with open(srFile, 'rb') as opn_file:
             default_values = pickle.load(opn_file)
+        print(f"Using construal values from file {srFile}")
+        break
     else:
         continue
 
 if default_values is None:
-    default_values, traj_obs, ground_truth = generate_all_construal_trajnval(out_dir=out_dir,
+    default_values, traj_obs, ground_truth, _ = generate_all_construal_trajnval(out_dir=out_dir,
                                                                                 sim_agent=sim_agent,
                                                                                 observed_agents_count=observed_agents_count,
                                                                                 construal_size=construal_size,
@@ -142,6 +144,7 @@ if default_values is None:
                                                                                 env=env,
                                                                                 env_multi_agent=env_multi_agent,
                                                                                 generate_animations=False)
+    del traj_obs, ground_truth
 
 # |Generate Construal Heuristic Values
 heuristic_values = get_constral_heurisrtic_values(env, train_loader, default_values, heuristic_params=heuristic_params)
@@ -175,9 +178,12 @@ for srFile in simulation_results_files:
         continue
     with open(srFile, 'rb') as opn_file:
         state_action_pairs = pickle.load(opn_file)
+    print(f"Using synthetic baseline data from file {srFile}")
+    break
 
 if state_action_pairs is None:
-    state_action_pairs = generate_baseline_data(out_dir=out_dir,
+    lambdaPath = out_dir + f"lambda{heuristic_params['ego_distance']}_"
+    state_action_pairs = generate_baseline_data(out_dir=lambdaPath,
                                                 sim_agent=sim_agent,
                                                 num_parallel_envs=num_parallel_envs,
                                                 max_agents=max_agents,
@@ -211,9 +217,12 @@ for srFile in simulation_results_files:
         continue
     with open(srFile, 'rb') as opn_file:
         construal_action_likelihoods = pickle.load(opn_file)
+    print(f"Using log-likelihodd measure from file {srFile}")
+    break
 
 if construal_action_likelihoods is None:
-    construal_action_likelihoods = evaluate_construals(state_action_pairs, construal_size, sim_agent, out_dir, device=device)
+    lambdaPath = out_dir + f"lambda{heuristic_params['ego_distance']}_"
+    construal_action_likelihoods = evaluate_construals(state_action_pairs, construal_size, sim_agent, lambdaPath, device=device)
 
 # |Clear memory for large variable, once it has served its purpose
 del state_action_pairs
@@ -286,10 +295,6 @@ for curr_lambda, scene_info in p_lambda.items():
     lamda_inference[curr_lambda] = np.prod([val for scene_name, construal_info in scene_info.items() for val in construal_info.values() if val > 0])
 print(lamda_inference)
 
-# |Print the execution time
-execution_time = time.perf_counter() - start_time
-print(f"Execution time: {math.floor(execution_time/60)} minutes and {execution_time%60:.1f} seconds")
-
 
 
 
@@ -311,5 +316,11 @@ construal_action_likelihoods_summarydf = construal_action_likelihoods_df.groupby
                                             groupby(level=(0,1)).head(5).sort_index(level=(0,1), sort_remaining=False)
 
 
-construal_action_likelihoods_df.to_csv(out_dir + "construal_action_likelihoods.tsv", sep="\t", index=True, header=True)
-construal_action_likelihoods_summarydf.to_csv(out_dir + "construal_action_likelihoods_summary.tsv", sep="\t", index=True, header=True)
+construal_action_likelihoods_df.to_csv(out_dir + f"lambda{heuristic_params['ego_distance']}_construal_action_likelihoods.tsv", sep="\t", index=True, header=True)
+construal_action_likelihoods_summarydf.to_csv(out_dir + f"lambda{heuristic_params['ego_distance']}_construal_action_likelihoods_summary.tsv", sep="\t", index=True, header=True)
+
+
+
+# |Print the execution time
+execution_time = time.perf_counter() - start_time
+print(f"Execution time: {math.floor(execution_time/60)} minutes and {execution_time%60:.1f} seconds")

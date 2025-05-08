@@ -11,6 +11,7 @@ from itertools import combinations
 
 from typing import Any, Dict, List, Tuple
 
+from sympy import parallel_poly_from_expr
 from torch.distributions.utils import logits_to_probs
 
 
@@ -144,7 +145,7 @@ def run_policy(env: GPUDriveTorchEnv,
     info = env.get_infos()
 
     # |Variable for trajectory illustrations
-    plottable_obs = env.get_structured_obs()
+    plottable_obs = env.get_structured_obs(partner_mask=construal_masks)
 
     # |DEBUG LOGIC: Check if state processing logic is operating correctly
     # tmp2_ind_, tmpt2_mask_ = get_construals(64, (1,), 1, expanded_mask = True)['default']
@@ -220,6 +221,7 @@ def simulate_policies(env: GPUDriveConstrualEnv,
         if len(loop_count) > 1:
             raise ValueError("Number of construals per scene must be the same")
         loop_count = loop_count.pop()
+ 
     for const_num in range(loop_count):
         # |LOOP rollout for each construal
 
@@ -256,7 +258,7 @@ def simulate_policies(env: GPUDriveConstrualEnv,
                 state_action_pairs[scene_name][moving_veh_indices[scene_num]] = {sample_num_: [] for sample_num_ in range(sample_size)}                
                 frames = {f"env_{scene_name}-sample_{sample_num_}": [] for sample_num_ in range(sample_size)}
         
-        curr_samples = []   # Keep track of rewards
+        curr_sample_rewards = []   # Keep track of rewards
         for sample_num in range(sample_size):
             print("\tsample ", sample_num+1)
             
@@ -318,7 +320,7 @@ def simulate_policies(env: GPUDriveConstrualEnv,
                     break
             print() # Change to new line after step prints
                 
-            curr_samples.append(reward[control_mask].tolist())
+            curr_sample_rewards.append(reward[control_mask].tolist())
 
         #2# |Save animations
         if generate_animations:
@@ -326,16 +328,16 @@ def simulate_policies(env: GPUDriveConstrualEnv,
 
         #2# |Calculate value (average reward) for each construal
         if construal_size > 0:
-            curr_vals = [sum(x)/sample_size for x in zip(*curr_samples)]
+            curr_vals = [sum(x)/sample_size for x in zip(*curr_sample_rewards)]
             for scene_num, val in enumerate(curr_vals):
                 construal_values[curr_data_batch[scene_num]][mask_indices[scene_num]] = val
-            print("Processed masks: ", mask_indices, ", with values:", curr_vals)
+            print("Processed mask(s): ", mask_indices, ", with value(s):", curr_vals)
 
             # if all([mask == () for mask in mask_indices]):
             if all(construal_done):
                 #2# |Break loop once list of construals for all scenarios have been exhausted
                 break
-
+    
     #2# Extract ground-truth data
     ground_truth = {'traj': {}, 'traj_valids': {}, 'contr_veh_indices': {}}
     for scene_num, scene_name in enumerate(curr_data_batch):

@@ -1508,11 +1508,6 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
         lidar_observations = self._get_lidar_obs(mask)
 
         if raw_obs:
-            # obs = (
-            #         ego_states,
-            #         partner_observations,
-            #         road_map_observations,
-            #         )
             obs = [(ego_states[env_num], 
                     partner_observations[env_num], 
                     road_map_observations[env_num]) for env_num in range(self.num_worlds)]
@@ -1593,6 +1588,28 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
         
         return result
 
+    
+    def get_veh_ids(self, veh_indices=None):
+        """Get IDs for vehilces (by index) in the environment"""
+        if veh_indices is None:
+            return None
+        
+        agent_state = GlobalEgoState.from_tensor(
+                                                    self.sim.absolute_self_observation_tensor(),
+                                                    self.backend,
+                                                )
+        
+        veh_IDs = []
+        for w in range(self.num_worlds):
+            curr_indices = veh_indices[w]
+            veh_IDs.append({i: agent_state.id[w][i].item() for i in curr_indices})
+
+        return veh_IDs
+
+
+
+
+
 
     def get_structured_obs(self, mask=None, partner_mask=None):
         """Get structured observations. 'pos_ego' returns the current positions of all vehicles."""
@@ -1600,9 +1617,9 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
 
         # |Get ego details
         agent_state = GlobalEgoState.from_tensor(
-            self.sim.absolute_self_observation_tensor(),
-            self.backend,
-        )
+                                                    self.sim.absolute_self_observation_tensor(),
+                                                    self.backend,
+                                                )
 
         #2# |Process each world
         ego_pos = []
@@ -1622,15 +1639,34 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
         structured_obs['pos_ego'] = ego_pos
 
 
-        # # | Get partner details
-        # partner_obs = PartnerObs.from_tensor(
-        #     partner_obs_tensor=self.sim.partner_observations_tensor(),
-        #     backend=self.backend,
-        #     device=self.device,
-        #     mask=mask,
-        # )        
-        # partner_obs.rel_pos_x,
-        # partner_obs.rel_pos_y,
+        # | Get partner details
+        partner_obs = PartnerObs.from_tensor(
+                                                partner_obs_tensor=self.sim.partner_observations_tensor(),
+                                                backend=self.backend,
+                                                device=self.device,
+                                                mask=mask,
+                                            )
+
+        #2# |Process each world
+        partner_mask = torch.tensor(partner_mask).to(self.device)
+        partnerIDs = []
+        for w in range(self.num_worlds):
+            # Get partner indices for this world
+            valid_mask = partner_mask[w][self.cont_agent_mask[w]]
+            world_agent_indices = torch.where(valid_mask)[0]
+
+            if len(world_agent_indices) == 0:
+                continue
+
+            controlled_agent_indices = torch.where(self.cont_agent_mask[w])[0]
+            world_partnerIDs = {}
+            for curr_agent_indx in controlled_agent_indices:
+                temp_ = partner_obs.ids[w][curr_agent_indx][valid_mask[curr_agent_indx]].cpu().tolist()
+                world_partnerIDs[curr_agent_indx] = [currID_ for currrIDList in temp_ for currID_ in currrIDList]   # Flatten list
+
+            # Extract partner IDs
+            partnerIDs.append(world_partnerIDs)
+        structured_obs['ID_partner'] = partnerIDs
 
 
         # # | Get road details

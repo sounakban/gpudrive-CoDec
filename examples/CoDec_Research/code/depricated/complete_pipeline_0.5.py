@@ -191,7 +191,7 @@ elif construal_selection_logic == "heuristic_1":
             continue
 
     if scene_constr_dict is None:
-        default_values = generate_all_construal_trajnval(out_dir=out_dir,
+        default_values, _, _, _ = generate_all_construal_trajnval(out_dir=out_dir,
                                                         sim_agent=sim_agent,
                                                         observed_agents_count=observed_agents_count,
                                                         construal_size=construal_size,

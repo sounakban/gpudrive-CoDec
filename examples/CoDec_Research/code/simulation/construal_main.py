@@ -117,6 +117,7 @@ def generate_all_construal_trajnval(out_dir: str,
     construal_values = {"dict_structure": '{scene_name: {construal_index: value}}'}
     traj_obs = {"dict_structure": '{scene_name: {construal_index: {sample_num: 3Dmatrix[vehicles,timestep,coord]}}}'}
     ground_truth = {"dict_structure": '{"traj": {scene_name: 3Dmatrix[vehicles,timestep,coord]}, "traj_valids": {scene_name: 3Dmatrix[vehicles,timestep,bool]}, "contr_veh_indices": {scene_name: list[controlled_vehicles]} }'}
+    veh_indx2ID = {}
 
     # |Loop through all batches
     for batch in tqdm(train_loader, desc=f"Processing Waymo batches",
@@ -132,6 +133,11 @@ def generate_all_construal_trajnval(out_dir: str,
         moving_veh_indices = [tuple(torch.where(mask)[0].cpu().tolist()) for mask in moving_veh_mask]
         print("Indices of all moving vehicles (by scene): ", moving_veh_indices)
         control_mask = env.cont_agent_mask
+
+        # |Get IDs of construal vehicles
+        curr_data_batch = [env_path2name(env_path_) for env_path_ in env.data_batch]
+        for scene_num, scene_name in enumerate(curr_data_batch):
+            veh_indx2ID[scene_name] = env.get_veh_ids(veh_indices=moving_veh_indices)[scene_num]
 
         # |Simulate on Construals
         construal_values_, traj_obs_, ground_truth_, _ = simulate_policies(env = env,
@@ -154,19 +160,19 @@ def generate_all_construal_trajnval(out_dir: str,
     savefl_path = out_dir+"construal_vals_"+str(datetime.now())+".pickle"
     with open(savefl_path, 'wb') as file:
         pickle.dump(construal_values, file, protocol=pickle.HIGHEST_PROTOCOL)
-    print("Baseline data saved to: ", savefl_path)
+    print("Construal value information saved to: ", savefl_path)
     # |Save the construal trajectory information to a file
     savefl_path = out_dir+"all_constr_obs_"+str(datetime.now())+".pickle"
     with open(savefl_path, 'wb') as file:
         pickle.dump(traj_obs, file, protocol=pickle.HIGHEST_PROTOCOL)
-    print("Baseline data saved to: ", savefl_path)
+    print("Trajectory observation data saved to: ", savefl_path)
     # |Save the ground truth information to a file
     savefl_path = out_dir+"ground_truth_"+str(datetime.now())+".pickle"
     with open(savefl_path, 'wb') as file:
         pickle.dump(ground_truth, file, protocol=pickle.HIGHEST_PROTOCOL)
-    print("Baseline data saved to: ", savefl_path)
+    print("Ground truth data saved to: ", savefl_path)
 
-    return construal_values, traj_obs, ground_truth
+    return construal_values, traj_obs, ground_truth, veh_indx2ID
 
 
 
