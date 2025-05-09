@@ -251,6 +251,7 @@ examples/experimental/logs/*
 
 # Results
 examples/CoDec_Research/results/simulation_results
+data/processed/Viz*
 
 # Sbatch scripts
 *.sh
