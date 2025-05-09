@@ -72,12 +72,12 @@ out_dir = "examples/CoDec_Research/results/simulation_results/"
 training_config = load_config("examples/experimental/config/reliable_agents_params")
 
 # |Set scenario path
-dataset_path = 'data/processed/construal'
+dataset_path = 'data/processed/construal/Set1/'
 
 # |Set simulator config
 max_agents = training_config.max_controlled_agents   # Get total vehicle count
-num_parallel_envs = 15
-total_envs = 15
+num_parallel_envs = 10
+total_envs = 10
 # device = "cpu" # cpu just because we're in a notebook
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
