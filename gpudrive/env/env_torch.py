@@ -1661,7 +1661,7 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
             controlled_agent_indices = torch.where(self.cont_agent_mask[w])[0]
             world_partnerIDs = {}
             for curr_agent_indx in controlled_agent_indices:
-                temp_ = partner_obs.ids[w][curr_agent_indx][valid_mask[curr_agent_indx]].cpu().tolist()
+                temp_ = partner_obs.ids[w][curr_agent_indx][partner_mask[w][curr_agent_indx]].cpu().tolist()
                 world_partnerIDs[curr_agent_indx] = [currID_ for currrIDList in temp_ for currID_ in currrIDList]   # Flatten list
 
             # Extract partner IDs

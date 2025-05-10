@@ -43,6 +43,9 @@ from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars
 from examples.CoDec_Research.code.analysis.evaluate_construal_actions import evaluate_construals, get_best_construals_likelihood
 
 
+# Function to extract filename from path
+env_path2name = lambda path: path.split("/")[-1].split(".")[0]
+
 
 # |START TIMER
 start_time = time.perf_counter()
@@ -70,6 +73,7 @@ training_config = load_config("examples/experimental/config/reliable_agents_para
 
 # |Set scenario path
 dataset_path = 'data/processed/construal/Set2/'
+processID = dataset_path.split('/')[-2]        # Used for storing and retrieving relevant data
 
 # |Set simulator config
 max_agents = training_config.max_controlled_agents   # Get total vehicle count
@@ -105,6 +109,9 @@ env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
 
 
 
+
+
+
 #############################################
 ################ SIMULATIONS ################
 #############################################
@@ -122,13 +129,15 @@ for srFile in simulation_results_files:
     if "construal_vals" in srFile:
         with open(srFile, 'rb') as opn_file:
             default_values = pickle.load(opn_file)
-        print(f"Using construal values from file {srFile}")
-        break
-    else:
-        continue
+        #2# |Ensure the correct file is being loaded
+        if all(env_path2name(scene_path_) in default_values.keys() for scene_path_ in train_loader.dataset):
+            print(f"Using construal values from file {srFile}")
+            break
+        else:
+            default_values = None
 
 if default_values is None:
-    default_values, traj_obs, ground_truth, _ = generate_all_construal_trajnval(out_dir=simulation_results_path,
+    default_values, traj_obs, ground_truth, _ = generate_all_construal_trajnval(out_dir=simulation_results_path+processID+"_",
                                                                                 sim_agent=sim_agent,
                                                                                 observed_agents_count=observed_agents_count,
                                                                                 construal_size=construal_size,
