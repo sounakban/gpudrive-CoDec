@@ -65,11 +65,11 @@ def get_gpuDrive_vars(training_config,
         sample_with_replacement=False,
     )
 
-    # |Make env [Original]
+    # # |Make env [Original]
     # env = GPUDriveTorchEnv(
     #     config=env_config,
     #     data_loader=train_loader,
-    #     max_cont_agents=config.max_controlled_agents,
+    #     max_cont_agents=training_config.max_controlled_agents,
     #     device=device,
     # )
 

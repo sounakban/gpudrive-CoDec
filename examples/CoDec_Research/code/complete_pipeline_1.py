@@ -61,12 +61,9 @@ trajectory_count_baseline = 3 # Number of baseline trajectories to generate per 
 
 ### Specify Environment Configuration ###
 
-# |Location to store (and find pre-computed) simulation results
+# |Location to store (and retrieve pre-computed) simulation results
 simulation_results_path = "examples/CoDec_Research/results/simulation_results/"
 simulation_results_files = [simulation_results_path+fl_name for fl_name in listdir(simulation_results_path)]
-
-# |Location to store simulation results
-out_dir = "examples/CoDec_Research/results/simulation_results/"
 
 # |Model Config (on which model was trained)
 training_config = load_config("examples/experimental/config/reliable_agents_params")
@@ -93,6 +90,7 @@ total_envs = min(total_envs, len(listdir(dataset_path)))
 
 
 
+
 ### Instantiate Variables ###
 
 env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
@@ -104,8 +102,6 @@ env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
                                                                                 total_envs = total_envs,
                                                                                 sim_agent_path= "daphne-cornelisse/policy_S10_000_02_27",
                                                                             )
-
-
 
 
 
@@ -132,7 +128,7 @@ for srFile in simulation_results_files:
         continue
 
 if default_values is None:
-    default_values, traj_obs, ground_truth, _ = generate_all_construal_trajnval(out_dir=out_dir,
+    default_values, traj_obs, ground_truth, _ = generate_all_construal_trajnval(simulation_results_path=simulation_results_path,
                                                                                 sim_agent=sim_agent,
                                                                                 observed_agents_count=observed_agents_count,
                                                                                 construal_size=construal_size,
@@ -182,8 +178,8 @@ for srFile in simulation_results_files:
     break
 
 if state_action_pairs is None:
-    lambdaPath = out_dir + f"lambda{heuristic_params['ego_distance']}_"
-    state_action_pairs = generate_baseline_data(out_dir=lambdaPath,
+    lambdaPath = simulation_results_path + f"lambda{heuristic_params['ego_distance']}_"
+    state_action_pairs = generate_baseline_data(simulation_results_path=lambdaPath,
                                                 sim_agent=sim_agent,
                                                 num_parallel_envs=num_parallel_envs,
                                                 max_agents=max_agents,
@@ -221,7 +217,7 @@ for srFile in simulation_results_files:
     break
 
 if construal_action_likelihoods is None:
-    lambdaPath = out_dir + f"lambda{heuristic_params['ego_distance']}_"
+    lambdaPath = simulation_results_path + f"lambda{heuristic_params['ego_distance']}_"
     construal_action_likelihoods = evaluate_construals(state_action_pairs, construal_size, sim_agent, lambdaPath, device=device)
 
 # |Clear memory for large variable, once it has served its purpose
@@ -244,9 +240,9 @@ del state_action_pairs
 #             scene_constr_dict = pickle.load(opn_file)
 
 # if scene_constr_dict is None:
-#     scene_constr_dict = get_best_construals_likelihood(construal_action_likelihoods, out_dir)
+#     scene_constr_dict = get_best_construals_likelihood(construal_action_likelihoods, simulation_results_path)
 # if scene_constr_diff_dict is None:
-#     scene_constr_diff_dict = get_best_construals_likelihood(construal_action_likelihoods, out_dir, likelihood_key="log_likelihood_diff")
+#     scene_constr_diff_dict = get_best_construals_likelihood(construal_action_likelihoods, simulation_results_path, likelihood_key="log_likelihood_diff")
 
 # for scene_name_, scene_info_ in construal_action_likelihoods.items():
 #     print(f"Scene: {scene_name_}")
@@ -316,8 +312,8 @@ construal_action_likelihoods_summarydf = construal_action_likelihoods_df.groupby
                                             groupby(level=(0,1)).head(5).sort_index(level=(0,1), sort_remaining=False)
 
 
-construal_action_likelihoods_df.to_csv(out_dir + f"lambda{heuristic_params['ego_distance']}_construal_action_likelihoods.tsv", sep="\t", index=True, header=True)
-construal_action_likelihoods_summarydf.to_csv(out_dir + f"lambda{heuristic_params['ego_distance']}_construal_action_likelihoods_summary.tsv", sep="\t", index=True, header=True)
+construal_action_likelihoods_df.to_csv(simulation_results_path + f"lambda{heuristic_params['ego_distance']}_construal_action_likelihoods.tsv", sep="\t", index=True, header=True)
+construal_action_likelihoods_summarydf.to_csv(simulation_results_path + f"lambda{heuristic_params['ego_distance']}_construal_action_likelihoods_summary.tsv", sep="\t", index=True, header=True)
 
 
 
