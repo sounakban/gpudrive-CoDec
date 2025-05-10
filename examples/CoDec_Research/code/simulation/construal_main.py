@@ -344,6 +344,11 @@ def get_constral_heurisrtic_values(env: GPUDriveConstrualEnv, train_loader: Scen
         #2# |BATCHING LOGIC: https://github.com/Emerge-Lab/gpudrive/blob/bd618895acde90d8c7d880b32d87942efe42e21d/examples/experimental/eval_utils.py#L316
         #2# |Update simulator with the new batch of data
         env.swap_data_batch(batch)
+
+        #2# |Ensure the correct combination of environments and values are being used
+        assert all(env_path2name(scene_path_) in construal_indices.keys() for scene_path_ in env.data_batch), \
+            "Mismatch between environment data batch and default values"
+
         heuristics_vars = [(curr_heuristic_func_(env, construal_indices, average=average, normalize=normalize), 
                             curr_heuristic_val_)
                                 for curr_heuristic_func_, curr_heuristic_val_ in active_heuristics.items()]

@@ -69,12 +69,12 @@ simulation_results_files = [simulation_results_path+fl_name for fl_name in listd
 training_config = load_config("examples/experimental/config/reliable_agents_params")
 
 # |Set scenario path
-dataset_path = 'data/processed/construal/Set1/'
+dataset_path = 'data/processed/construal/Set2/'
 
 # |Set simulator config
 max_agents = training_config.max_controlled_agents   # Get total vehicle count
-num_parallel_envs = 5
-total_envs = 5
+num_parallel_envs = 25
+total_envs = 25
 # device = "cpu" # cpu just because we're in a notebook
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -128,7 +128,7 @@ for srFile in simulation_results_files:
         continue
 
 if default_values is None:
-    default_values, traj_obs, ground_truth, _ = generate_all_construal_trajnval(simulation_results_path=simulation_results_path,
+    default_values, traj_obs, ground_truth, _ = generate_all_construal_trajnval(out_dir=simulation_results_path,
                                                                                 sim_agent=sim_agent,
                                                                                 observed_agents_count=observed_agents_count,
                                                                                 construal_size=construal_size,
@@ -163,6 +163,8 @@ def sample_construals(heuristic_values: dict, sample_count: int) -> dict:
 scene_constr_dict = sample_construals(heuristic_values, sample_count=construal_count_baseline)
 
 
+print("Exiting after construal sampling")
+exit()
 
 
 ### Generate Synthetic Ground Truth for Selected Construals (Baseline Data on Which to Perform Inference) ###
@@ -179,7 +181,7 @@ for srFile in simulation_results_files:
 
 if state_action_pairs is None:
     lambdaPath = simulation_results_path + f"lambda{heuristic_params['ego_distance']}_"
-    state_action_pairs = generate_baseline_data(simulation_results_path=lambdaPath,
+    state_action_pairs = generate_baseline_data(out_dir=lambdaPath,
                                                 sim_agent=sim_agent,
                                                 num_parallel_envs=num_parallel_envs,
                                                 max_agents=max_agents,
