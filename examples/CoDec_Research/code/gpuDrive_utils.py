@@ -5,6 +5,7 @@ import torch
 import os
 import sys
 from pathlib import Path
+import pickle
 
 # Set working directory to the base directory 'gpudrive'
 working_dir = Path.cwd()
@@ -96,3 +97,7 @@ def get_gpuDrive_vars(training_config,
 
 
 
+def save_pickle(fliePath, fileData, dataTag: str = "Unspecified"):
+    with open(fliePath, 'wb') as file:
+        pickle.dump(fileData, file, protocol=pickle.HIGHEST_PROTOCOL)
+    print(f"{dataTag} data saved to: ", fliePath)

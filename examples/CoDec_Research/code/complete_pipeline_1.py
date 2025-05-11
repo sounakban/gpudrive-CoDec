@@ -39,7 +39,7 @@ sys.path.append(str(working_dir))
 from gpudrive.utils.config import load_config
 from examples.CoDec_Research.code.simulation.construal_main import generate_baseline_data, generate_selected_construal_traj, \
                                                                     get_constral_heurisrtic_values, generate_all_construal_trajnval
-from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars
+from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars, save_pickle
 from examples.CoDec_Research.code.analysis.evaluate_construal_actions import evaluate_construals, get_best_construals_likelihood
 
 
@@ -85,14 +85,16 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # |Set construal config
 construal_size = 1
 observed_agents_count = max_agents - 1      # Agents observed except self (used for vector sizes)
-sample_size_utility = 45                    # Number of samples to compute expected utility of a construal
+sample_size_utility = 40                    # Number of samples to compute expected utility of a construal
 
 # |Other changes to variables
 training_config.max_controlled_agents = 1    # Control only the first vehicle in the environment
 total_envs = min(total_envs, len(listdir(dataset_path)))
 
 
-
+# TODO (Post NeurIPS): Optimize code
+# 1. Reduce redunduncy in baseline data (use data-class to save data)
+# 2. Convert for loops to list comprihension in env_torch.py: function get_structured_observation
 
 
 ### Instantiate Variables ###
@@ -131,14 +133,13 @@ for srFile in simulation_results_files:
             default_values = pickle.load(opn_file)
         #2# |Ensure the correct file is being loaded
         if all(env_path2name(scene_path_) in default_values.keys() for scene_path_ in train_loader.dataset):
-            print(f"Using construal values from file {srFile}")
+            print(f"Using construal values from file: {srFile}")
             break
         else:
             default_values = None
 
 if default_values is None:
-    default_values, traj_obs, ground_truth, _ = generate_all_construal_trajnval(out_dir=simulation_results_path+processID+"_",
-                                                                                sim_agent=sim_agent,
+    default_values, traj_obs, ground_truth, _ = generate_all_construal_trajnval(sim_agent=sim_agent,
                                                                                 observed_agents_count=observed_agents_count,
                                                                                 construal_size=construal_size,
                                                                                 num_parallel_envs=num_parallel_envs,
@@ -149,6 +150,14 @@ if default_values is None:
                                                                                 env=env,
                                                                                 env_multi_agent=env_multi_agent,
                                                                                 generate_animations=False)
+    #3# |Save data
+    savefl_path = simulation_results_path+processID+"_"+"construal_vals_"+str(datetime.now())+".pickle"
+    save_pickle(savefl_path, default_values, "Construal value")
+    savefl_path = simulation_results_path+processID+"_"+"constr_traj_obs_"+str(datetime.now())+".pickle"
+    save_pickle(savefl_path, traj_obs, "Trajectory observation")
+    savefl_path = simulation_results_path+processID+"_"+"ground_truth_"+str(datetime.now())+".pickle"
+    save_pickle(savefl_path, ground_truth, "Ground truth")
+    #3# Free up memory
     del traj_obs, ground_truth
 
 # |Generate Construal Heuristic Values
@@ -172,8 +181,8 @@ def sample_construals(heuristic_values: dict, sample_count: int) -> dict:
 scene_constr_dict = sample_construals(heuristic_values, sample_count=construal_count_baseline)
 
 
-print("Exiting after construal sampling")
-exit()
+
+
 
 
 ### Generate Synthetic Ground Truth for Selected Construals (Baseline Data on Which to Perform Inference) ###
@@ -181,17 +190,20 @@ state_action_pairs = None
 
 # |Check if saved data is available
 for srFile in simulation_results_files:
-    if "baseline_state_action_pairs" not in srFile:
-        continue
-    with open(srFile, 'rb') as opn_file:
-        state_action_pairs = pickle.load(opn_file)
-    print(f"Using synthetic baseline data from file {srFile}")
-    break
+    if "baseline_state_action_pairs_" in srFile:
+        with open(srFile, 'rb') as opn_file:
+            state_action_pairs = pickle.load(opn_file)
+        #2# |Ensure the correct file is being loaded
+        if all(env_path2name(scene_path_) in state_action_pairs.keys() for scene_path_ in train_loader.dataset) and \
+                state_action_pairs["params"] == heuristic_params:
+            print(f"Using synthetic baseline data from file: {srFile}")
+            break
+        else:
+            state_action_pairs = None
 
 if state_action_pairs is None:
     lambdaPath = simulation_results_path + f"lambda{heuristic_params['ego_distance']}_"
-    state_action_pairs = generate_baseline_data(out_dir=lambdaPath,
-                                                sim_agent=sim_agent,
+    state_action_pairs = generate_baseline_data(sim_agent=sim_agent,
                                                 num_parallel_envs=num_parallel_envs,
                                                 max_agents=max_agents,
                                                 sample_size=trajectory_count_baseline,
@@ -203,9 +215,13 @@ if state_action_pairs is None:
                                                 construal_size=construal_size,
                                                 selected_construals=scene_constr_dict,
                                                 generate_animations=False)
+    #2# |Save data
+    savefl_path = simulation_results_path+processID+"_"+"baseline_state_action_pairs_"+str(datetime.now())+".pickle"
+    state_action_pairs["params"] = heuristic_params # Save parameters for data generation
+    save_pickle(savefl_path, state_action_pairs, "Baseline")
 
-
-
+# |Use parameters only for matching data identity (not needed beyond this point)
+state_action_pairs.pop("params")
 
 
 
@@ -220,20 +236,31 @@ construal_action_likelihoods = None
 
 # |Check if saved data is available
 for srFile in simulation_results_files:
-    if "log_likelihood_measures" not in srFile:
-        continue
-    with open(srFile, 'rb') as opn_file:
-        construal_action_likelihoods = pickle.load(opn_file)
-    print(f"Using log-likelihodd measure from file {srFile}")
-    break
+    if "log_likelihood_measures" in srFile:
+        with open(srFile, 'rb') as opn_file:
+            construal_action_likelihoods = pickle.load(opn_file)
+        #2# |Ensure the correct file is being loaded
+        if all(env_path2name(scene_path_) in construal_action_likelihoods.keys() for scene_path_ in train_loader.dataset) and \
+                construal_action_likelihoods["params"] == heuristic_params:
+            print(f"Using log-likelihodd measures from file: {srFile}")
+            break
+        else:
+            construal_action_likelihoods = None
 
 if construal_action_likelihoods is None:
-    lambdaPath = simulation_results_path + f"lambda{heuristic_params['ego_distance']}_"
-    construal_action_likelihoods = evaluate_construals(state_action_pairs, construal_size, sim_agent, lambdaPath, device=device)
+    # lambdaPath = simulation_results_path + f"lambda{heuristic_params['ego_distance']}_"
+    construal_action_likelihoods = evaluate_construals(state_action_pairs, construal_size, sim_agent, device=device)
+
+    # |Save data
+    savefl_path = simulation_results_path+processID+"_"+"log_likelihood_measures_"+str(datetime.now())+".pickle"
+    construal_action_likelihoods["params"] = heuristic_params # Save parameters for data generation
+    save_pickle(savefl_path, construal_action_likelihoods, "Log Likelihood")
+
+# |Use parameters only for matching data identity (not needed beyond this point)
+construal_action_likelihoods.pop("params")
 
 # |Clear memory for large variable, once it has served its purpose
 del state_action_pairs
-
 
 
 
@@ -285,21 +312,22 @@ for curr_lambda in np.linspace(0,1,11):
     for scene_name, sampled_construals in construal_action_likelihoods.items():
         p_lambda[curr_lambda][scene_name] = {}
         for base_construal, base_construal_info in sampled_construals.items():
+
             p_lambda[curr_lambda][scene_name][base_construal] = []
-            for test_construal, test_construal_info in base_construal_info.items():
+            for traj_sample, traj_sample_info in base_construal_info.items():
                 curr_p_lambda = []
-                for sample_num, sample_info in test_construal_info.items():
-                    p_a = torch.exp( -1*sample_info['log_likelihood'] ).item()
+                for test_construal, test_construal_info in traj_sample_info.items():
                     construal_heur_value = curr_heuristic_values[scene_name][test_construal]
+                    # p_a = torch.exp( -1*test_construal_info['log_likelihood'].type(torch.float64) ).item()
+                    p_a = test_construal_info['likelihood'].item()
                     curr_p_lambda.append(p_a*construal_heur_value)
-                curr_p_lambda = np.prod([val for val in curr_p_lambda if val > 0])
-                p_lambda[curr_lambda][scene_name][base_construal].append(curr_p_lambda)
-            p_lambda[curr_lambda][scene_name][base_construal] = sum(p_lambda[curr_lambda][scene_name][base_construal])
+                p_lambda[curr_lambda][scene_name][base_construal].append( torch.log(torch.sum(torch.tensor(curr_p_lambda, dtype=torch.float64))) )
+            p_lambda[curr_lambda][scene_name][base_construal] = -1*torch.sum(torch.tensor(p_lambda[curr_lambda][scene_name][base_construal])).item()
 
 # |Get product over lambda probability across sampled construals
 lamda_inference = {}
 for curr_lambda, scene_info in p_lambda.items():
-    lamda_inference[curr_lambda] = np.prod([val for scene_name, construal_info in scene_info.items() for val in construal_info.values() if val > 0])
+    lamda_inference[curr_lambda] = np.sum([val for scene_name, construal_info in scene_info.items() for val in construal_info.values() if val < np.inf])
 print(lamda_inference)
 
 
@@ -309,11 +337,13 @@ print(lamda_inference)
 ### Convert Results to Pandas Table and Save ###
 import pandas as pd
 
-construal_action_likelihoods_df = {(scene,baseC,testC,sample): construal_action_likelihoods[scene][baseC][testC][sample]['log_likelihood'].item()
+construal_action_likelihoods_df = {(scene,baseC,testC,sample): construal_action_likelihoods[scene][baseC][sample][testC]['log_likelihood'].item()
                                         for scene in construal_action_likelihoods.keys() 
                                         for baseC in construal_action_likelihoods[scene].keys() 
-                                        for testC in construal_action_likelihoods[scene][baseC].keys() 
-                                        for sample in construal_action_likelihoods[scene][baseC][testC].keys()}
+                                        for sample in construal_action_likelihoods[scene][baseC].keys()
+                                        for testC in construal_action_likelihoods[scene][baseC][sample].keys()
+                                        }
+
 
 multi_index = pd.MultiIndex.from_tuples(construal_action_likelihoods_df.keys(), names=['scene', 'base_construal', 'test_construal', 'sample'])
 construal_action_likelihoods_df = pd.DataFrame(construal_action_likelihoods_df.values(), index=multi_index)
@@ -323,8 +353,11 @@ construal_action_likelihoods_summarydf = construal_action_likelihoods_df.groupby
                                             groupby(level=(0,1)).head(5).sort_index(level=(0,1), sort_remaining=False)
 
 
-construal_action_likelihoods_df.to_csv(simulation_results_path + f"lambda{heuristic_params['ego_distance']}_construal_action_likelihoods.tsv", sep="\t", index=True, header=True)
-construal_action_likelihoods_summarydf.to_csv(simulation_results_path + f"lambda{heuristic_params['ego_distance']}_construal_action_likelihoods_summary.tsv", sep="\t", index=True, header=True)
+heuristic_params_str = '_'.join([heur_+str(param_) for heur_, param_ in heuristic_params.items()])
+# construal_action_likelihoods_df.to_csv(simulation_results_path + f"lambda{heuristic_params['ego_distance']}_construal_action_likelihoods.tsv", sep="\t", index=True, header=True)
+construal_action_likelihoods_df.to_csv(simulation_results_path + processID + "_" + f"construal_action_likelihoods_{heuristic_params_str}.tsv", sep="\t", index=True, header=True)
+# construal_action_likelihoods_summarydf.to_csv(simulation_results_path + f"lambda{heuristic_params['ego_distance']}_construal_action_likelihoods_summary.tsv", sep="\t", index=True, header=True)
+construal_action_likelihoods_summarydf.to_csv(simulation_results_path + processID + "_" + f"construal_action_likelihoods_summary_{heuristic_params_str}.tsv", sep="\t", index=True, header=True)
 
 
 

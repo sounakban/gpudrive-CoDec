@@ -97,22 +97,30 @@ def get_actions(raw_state: Tuple[List], sim_agent: NeuralNet, control_mask: torc
 
 def evaluate_construals(baseline_data: Dict,
                         construal_size: int, 
-                        sim_agent: NeuralNet, 
-                        out_dir: str,
+                        sim_agent: NeuralNet,
+                        saveResults: bool = False,
+                        out_dir: str = None,
                         device: str = 'cpu',
                         ) -> Dict:
     """
     Evaluate the construals using the simulation agent.
 
     Args:
-        construal_info (Dict): Dictionary with construal indices and masks.
-        sim_agent (NeuralNet): The simulation agent.
-        all_veh_objs (List[Dict]): List of all vehicle objects.
+        baseline_data (Dict): the trajectory data on which the construals are evaluated.
+                                Also contains information about the control masks, agent count,
+                                and indices of moving vehicles.
         construal_size (int): Size of each construal.
+        sim_agent (NeuralNet): The simulation agent.
+        saveResults (bool): whether to save the results of the code.
+        out_dir (str): Location to save the results.
+        device (str): "cpu"/"cuda", device on which to run computations.
 
     Returns:
         Dict: Dictionary with construal indices and their corresponding actions.
     """    
+    if saveResults:
+        assert out_dir, "Provide save location for data"
+
     construal_action_likelihoods = {}
     for scene_name, scene_info in baseline_data.items():
         if scene_name == 'dict_structure':
@@ -129,17 +137,14 @@ def evaluate_construals(baseline_data: Dict,
                 baseline_constr_indxs == 'moving_veh_ind':
                 continue
             construal_action_likelihoods[scene_name][baseline_constr_indxs] = dict()
-            for construal_num in range(construal_count):
-                (test_construal_indices, test_construal_mask), _ = get_construal_byIndex(max_agents, moving_veh_indices, 
-                                                                                    construal_size, construal_num, 
-                                                                                    expanded_mask=True, device=device)
-                true_action_dist = None
-                pred_action_dist = None
-                print(baseline_constr_indxs,test_construal_indices)
-                construal_action_likelihoods[scene_name][baseline_constr_indxs][test_construal_indices] = dict()
-                # print(f"Processing baseline construal {baseline_constr_indxs} against construal {test_construal_indices}")
-                # print(baseline_constr_info)
-                for sample_num, sample in baseline_constr_info.items():
+            for sample_num, sample in baseline_constr_info.items():
+                construal_action_likelihoods[scene_name][baseline_constr_indxs][sample_num] = {}
+                for construal_num in range(construal_count):
+                    (test_construal_indices, test_construal_mask), _ = get_construal_byIndex(max_agents, moving_veh_indices, 
+                                                                                        construal_size, construal_num, 
+                                                                                        expanded_mask=True, device=device)
+                    true_action_dist = None
+                    pred_action_dist = None
                     print(f"Processing baseline construal {baseline_constr_indxs} against construal {test_construal_indices}, sample {sample_num}")
                     for timestep, (raw_state, true_action_logits) in enumerate(sample):
                         next_obs = process_state(raw_state, test_construal_mask, timestep)
@@ -153,23 +158,26 @@ def evaluate_construals(baseline_data: Dict,
                         true_action_dist =  curr_true_action_dist if true_action_dist is None else torch.cat((true_action_dist, curr_true_action_dist), dim=0)
                         curr_pred_action_dist = logits_to_probs(pred_action_logits).reshape(1,-1)    # Covert to prob distribution
                         pred_action_dist = curr_pred_action_dist if pred_action_dist is None else torch.cat((pred_action_dist, curr_pred_action_dist), dim=0)
-                    log_likelihood = [torch.log(pred_dist_[torch.argmax(tru_dist_).item()]) for tru_dist_, pred_dist_ in 
-                                                                                                zip(true_action_dist, pred_action_dist)]
-                    log_likelihood_diff = [torch.log( pred_dist_[torch.argmax(tru_dist_)]/torch.max(tru_dist_) ) for tru_dist_, pred_dist_ in 
-                                                                                                                            zip(true_action_dist, pred_action_dist)]
+                    likelihood = torch.tensor([pred_dist_[torch.argmax(tru_dist_).item()] for tru_dist_, pred_dist_ in 
+                                                                                            zip(true_action_dist, pred_action_dist)]).type(torch.float64)
+                    likelihood_diff = torch.tensor([pred_dist_[torch.argmax(tru_dist_)]/torch.max(tru_dist_)  for tru_dist_, pred_dist_ in 
+                                                                                                                zip(true_action_dist, pred_action_dist)]).type(torch.float64)
                     # print([(torch.argmax(pred_dist_), pred_dist_[torch.argmax(pred_dist_)]) for tru_dist_, pred_dist_ in zip(true_action_dist, pred_action_dist)
                     #             if torch.argmax(tru_dist_).item() != torch.argmax(pred_dist_).item()][0])  
-                    construal_action_likelihoods[scene_name][baseline_constr_indxs][test_construal_indices][sample_num] = \
+                    construal_action_likelihoods[scene_name][baseline_constr_indxs][sample_num][test_construal_indices] = \
                                                                                 {"true_likelihoods": true_action_dist,
                                                                                 "pred_likelihoods": pred_action_dist,
-                                                                                "log_likelihood": -1*sum(log_likelihood),
-                                                                                "log_likelihood_diff": sum(log_likelihood_diff),}
+                                                                                "likelihood": torch.prod(likelihood),
+                                                                                "log_likelihood": -1*sum(torch.log(likelihood)),
+                                                                                "log_likelihood_diff": sum(torch.log(likelihood_diff)),}
 
-    # |Save log likelihood moeasures to file
-    savefl_path = out_dir+"log_likelihood_measures_"+str(datetime.now())+".pickle"
-    with open(savefl_path, 'wb') as file:
-        pickle.dump(construal_action_likelihoods, file, protocol=pickle.HIGHEST_PROTOCOL)
-    print("Log likelihood measures saved to: ", savefl_path)
+    if saveResults:
+        # |Save log likelihood moeasures to file
+        print("Saving construal likelihood computation results")
+        savefl_path = out_dir+"log_likelihood_measures_"+str(datetime.now())+".pickle"
+        with open(savefl_path, 'wb') as file:
+            pickle.dump(construal_action_likelihoods, file, protocol=pickle.HIGHEST_PROTOCOL)
+        print("Log likelihood measures saved to: ", savefl_path)
         
     return construal_action_likelihoods
 

@@ -97,22 +97,25 @@ env_path2name = lambda path: path.split("/")[-1].split(".")[0]
 
 
 
-def generate_all_construal_trajnval(out_dir: str,
-                                sim_agent: NeuralNet,
-                                observed_agents_count: int,
-                                construal_size: int,
-                                num_parallel_envs: int,
-                                max_agents: int,
-                                sample_size: int,
-                                device: str,
-                                train_loader: SceneDataLoader,
-                                env: GPUDriveConstrualEnv,
-                                env_multi_agent: GPUDriveConstrualEnv,
-                                generate_animations: bool = False,
-                                ) -> None:
+def generate_all_construal_trajnval(sim_agent: NeuralNet,
+                                    observed_agents_count: int,
+                                    construal_size: int,
+                                    num_parallel_envs: int,
+                                    max_agents: int,
+                                    sample_size: int,
+                                    device: str,
+                                    train_loader: SceneDataLoader,
+                                    env: GPUDriveConstrualEnv,
+                                    env_multi_agent: GPUDriveConstrualEnv,
+                                    generate_animations: bool = False,
+                                    saveResults: bool = False,
+                                    out_dir: str = None,
+                                    ) -> None:
     """
     Generate values and trajectory observations for construed agent states
     """
+    if saveResults:
+        assert out_dir, "Provide save location for data"
 
     construal_values = {"dict_structure": '{scene_name: {construal_index: value}}'}
     traj_obs = {"dict_structure": '{scene_name: {construal_index: {sample_num: 3Dmatrix[vehicles,timestep,coord]}}}'}
@@ -156,21 +159,23 @@ def generate_all_construal_trajnval(out_dir: str,
         traj_obs.update(traj_obs_)
         ground_truth.update(ground_truth_)
 
-    # |Save the construal value information to a file
-    savefl_path = out_dir+"construal_vals_"+str(datetime.now())+".pickle"
-    with open(savefl_path, 'wb') as file:
-        pickle.dump(construal_values, file, protocol=pickle.HIGHEST_PROTOCOL)
-    print("Construal value information saved to: ", savefl_path)
-    # |Save the construal trajectory information to a file
-    savefl_path = out_dir+"all_constr_obs_"+str(datetime.now())+".pickle"
-    with open(savefl_path, 'wb') as file:
-        pickle.dump(traj_obs, file, protocol=pickle.HIGHEST_PROTOCOL)
-    print("Trajectory observation data saved to: ", savefl_path)
-    # |Save the ground truth information to a file
-    savefl_path = out_dir+"ground_truth_"+str(datetime.now())+".pickle"
-    with open(savefl_path, 'wb') as file:
-        pickle.dump(ground_truth, file, protocol=pickle.HIGHEST_PROTOCOL)
-    print("Ground truth data saved to: ", savefl_path)
+    if saveResults:
+        print("Saving simulation results")
+        # |Save the construal value information to a file
+        savefl_path = out_dir+"construal_vals_"+str(datetime.now())+".pickle"
+        with open(savefl_path, 'wb') as file:
+            pickle.dump(construal_values, file, protocol=pickle.HIGHEST_PROTOCOL)
+        print("Construal value information saved to: ", savefl_path)
+        # |Save the construal trajectory information to a file
+        savefl_path = out_dir+"constr_traj_obs_"+str(datetime.now())+".pickle"
+        with open(savefl_path, 'wb') as file:
+            pickle.dump(traj_obs, file, protocol=pickle.HIGHEST_PROTOCOL)
+        print("Trajectory observation data saved to: ", savefl_path)
+        # |Save the ground truth information to a file
+        savefl_path = out_dir+"ground_truth_"+str(datetime.now())+".pickle"
+        with open(savefl_path, 'wb') as file:
+            pickle.dump(ground_truth, file, protocol=pickle.HIGHEST_PROTOCOL)
+        print("Ground truth data saved to: ", savefl_path)
 
     return construal_values, traj_obs, ground_truth, veh_indx2ID
 
@@ -236,8 +241,7 @@ def generate_selected_construal_traj(out_dir: str,
 
 
 
-def generate_baseline_data( out_dir: str,
-                            sim_agent: NeuralNet,
+def generate_baseline_data( sim_agent: NeuralNet,
                             num_parallel_envs: int,
                             max_agents: int,
                             sample_size: int,
@@ -249,10 +253,15 @@ def generate_baseline_data( out_dir: str,
                             construal_size: int = 0,
                             selected_construals: Dict[str, List[Tuple[int]]] = None,
                             generate_animations: bool = False,
+                            saveResults: bool = False,
+                            out_dir: str = None,
                             ) -> None:
     """
     Generate baseline state representation and action probability pairs
     """
+    if saveResults:
+        assert out_dir, "Provide save location for data"
+
     state_action_pairs = {"dict_structure": '{scene_name: {\"control_mask\": mask, \"max_agents\": int, \"moving_veh_ind\": list, sample_num: ((raw_states, action_probs),...timesteps)}}'}
 
     # |Loop through all batches
@@ -293,11 +302,13 @@ def generate_baseline_data( out_dir: str,
             state_action_pairs_[scene_name]["moving_veh_ind"] = moving_veh_indices[scene_num]
         state_action_pairs.update(state_action_pairs_)
 
-    # |Save the state-action pairs to a file
-    savefl_path = out_dir+"baseline_state_action_pairs_"+str(datetime.now())+".pickle"
-    with open(savefl_path, 'wb') as file:
-        pickle.dump(state_action_pairs, file, protocol=pickle.HIGHEST_PROTOCOL)
-    print("Baseline data saved to: ", savefl_path)
+    if saveResults:
+        print("Saving baseline data")
+        # |Save the state-action pairs to a file
+        savefl_path = out_dir+"baseline_state_action_pairs_"+str(datetime.now())+".pickle"
+        with open(savefl_path, 'wb') as file:
+            pickle.dump(state_action_pairs, file, protocol=pickle.HIGHEST_PROTOCOL)
+        print("Baseline data saved to: ", savefl_path)
 
     return state_action_pairs
 
