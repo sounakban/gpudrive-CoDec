@@ -44,7 +44,7 @@ from examples.CoDec_Research.code.simulation.construal_main import generate_base
                                                                     get_constral_heurisrtic_values, generate_all_construal_trajnval
 from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars, save_pickle
 from examples.CoDec_Research.code.analysis.evaluate_construal_actions import evaluate_construals, get_best_construals_likelihood
-from examples.CoDec_Research.code.config import local_config, server_config
+from examples.CoDec_Research.code.config import active_config
 
 
 # Function to extract filename from path
@@ -58,7 +58,7 @@ start_time = time.perf_counter()
 ################ SET EXP PARAMETERS ################
 ####################################################
 
-curr_config = server_config
+curr_config = active_config
 
 # Parameters for Inference
 heuristic_params = {"ego_distance": 0.5, "cardinality": 1}              # Hueristics and their weight parameters (to be inferred)

@@ -246,7 +246,6 @@ def generate_baseline_data( sim_agent: NeuralNet,
                             max_agents: int,
                             sample_size: int,
                             device: str,
-                            train_loader: SceneDataLoader,
                             env: GPUDriveConstrualEnv,
                             env_multi_agent: GPUDriveConstrualEnv,
                             observed_agents_count: int = 0,
@@ -264,43 +263,36 @@ def generate_baseline_data( sim_agent: NeuralNet,
 
     state_action_pairs = {"dict_structure": '{scene_name: {\"control_mask\": mask, \"max_agents\": int, \"moving_veh_ind\": list, sample_num: ((raw_states, action_probs),...timesteps)}}'}
 
-    # |Loop through all batches
-    for batch in tqdm(train_loader, desc=f"Processing Waymo batches",
-                        total=len(train_loader), colour="blue"):
-        #2# |BATCHING LOGIC: https://github.com/Emerge-Lab/gpudrive/blob/bd618895acde90d8c7d880b32d87942efe42e21d/examples/experimental/eval_utils.py#L316
-        #2# |Update simulator with the new batch of data
-        env.swap_data_batch(batch)
-        env_multi_agent.swap_data_batch(batch)
-        control_mask = env.cont_agent_mask
-        curr_data_batch = [env_path2name(env_path_) for env_path_ in env.data_batch]
-        
-        #2# |Get moving vehicle information
-        moving_veh_mask = env_multi_agent.cont_agent_mask
-        moving_veh_indices = [tuple([i for i, val in enumerate(mask) if val]) for mask in moving_veh_mask]
-        # print("Indices of all moving vehicles (by scene): ", moving_veh_indices)
+    control_mask = env.cont_agent_mask
+    curr_data_batch = [env_path2name(env_path_) for env_path_ in env.data_batch]
+    
+    #2# |Get moving vehicle information
+    moving_veh_mask = env_multi_agent.cont_agent_mask
+    moving_veh_indices = [tuple([i for i, val in enumerate(mask) if val]) for mask in moving_veh_mask]
+    # print("Indices of all moving vehicles (by scene): ", moving_veh_indices)
 
-        #2# |Simulate on Construals
-        _, _, _, state_action_pairs_ = simulate_policies(env = env, 
-                                                        total_envs = num_parallel_envs,
-                                                        max_agents = max_agents,
-                                                        sample_size = sample_size,
-                                                        sim_agent = sim_agent,
-                                                        control_mask = control_mask,
-                                                        device = device,
-                                                        observed_agents_count = observed_agents_count,
-                                                        moving_veh_indices = moving_veh_indices,
-                                                        construal_size = construal_size,
-                                                        selected_construals = selected_construals,
-                                                        generate_animations = generate_animations,
-                                                        save_state_action_pairs=True,
-                                                        )
+    #2# |Simulate on Construals
+    _, _, _, state_action_pairs_ = simulate_policies(env = env, 
+                                                    total_envs = num_parallel_envs,
+                                                    max_agents = max_agents,
+                                                    sample_size = sample_size,
+                                                    sim_agent = sim_agent,
+                                                    control_mask = control_mask,
+                                                    device = device,
+                                                    observed_agents_count = observed_agents_count,
+                                                    moving_veh_indices = moving_veh_indices,
+                                                    construal_size = construal_size,
+                                                    selected_construals = selected_construals,
+                                                    generate_animations = generate_animations,
+                                                    save_state_action_pairs=True,
+                                                    )
 
-        for scene_num, scene_name in enumerate(curr_data_batch):
-            #2# |Add environment config metadata
-            state_action_pairs_[scene_name]["control_mask"] = env.cont_agent_mask[scene_num]
-            state_action_pairs_[scene_name]["max_agents"] = env.config.max_controlled_agents
-            state_action_pairs_[scene_name]["moving_veh_ind"] = moving_veh_indices[scene_num]
-        state_action_pairs.update(state_action_pairs_)
+    for scene_num, scene_name in enumerate(curr_data_batch):
+        #2# |Add environment config metadata
+        state_action_pairs_[scene_name]["control_mask"] = env.cont_agent_mask[scene_num]
+        state_action_pairs_[scene_name]["max_agents"] = env.config.max_controlled_agents
+        state_action_pairs_[scene_name]["moving_veh_ind"] = moving_veh_indices[scene_num]
+    state_action_pairs.update(state_action_pairs_)
 
     if saveResults:
         print("Saving baseline data")

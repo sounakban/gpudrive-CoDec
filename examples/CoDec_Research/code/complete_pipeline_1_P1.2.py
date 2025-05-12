@@ -22,6 +22,7 @@ import time
 
 import torch
 import dataclasses
+from tqdm import tqdm
 
 
 # |Set root for GPUDrive import
@@ -46,7 +47,7 @@ from gpudrive.utils.config import load_config
 from examples.CoDec_Research.code.simulation.construal_main import generate_baseline_data, generate_selected_construal_traj, \
                                                                     get_constral_heurisrtic_values, generate_all_construal_trajnval
 from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars, save_pickle
-from examples.CoDec_Research.code.config import local_config, server_config
+from examples.CoDec_Research.code.config import active_config
 
 
 # Function to extract filename from path
@@ -60,7 +61,7 @@ start_time = time.perf_counter()
 ################ SET EXP PARAMETERS ################
 ####################################################
 
-curr_config = server_config
+curr_config = active_config
 
 # Parameters for Inference
 heuristic_params = {"ego_distance": 0.5, "cardinality": 1}              # Hueristics and their weight parameters (to be inferred)
@@ -84,7 +85,7 @@ processID = dataset_path.split('/')[-2]                 # Used for storing and r
 
 # |Set simulator config
 max_agents = training_config.max_controlled_agents      # Get total vehicle count
-num_parallel_envs = curr_config['num_parallel_envs']
+num_parallel_envs = curr_config['num_parallel_envs_light']
 total_envs = curr_config['total_envs']
 device = eval(curr_config['device'])
 
@@ -136,58 +137,110 @@ if scene_constr_dict is None:
     raise FileNotFoundError("Could not find saved file for sampled construals for current scenes")
 
 ### Generate Synthetic Ground Truth for Selected Construals (Baseline Data on Which to Perform Inference) ###
-data_subset_paths = [dataset_path[:-1]+'.'+str(i)+'/' for i in range(1,6)]
 
-for curr_dataset_path in data_subset_paths:
-    if not os.path.isdir(curr_dataset_path):
-        # |Skip if directory does not exist
-        continue
+# data_subset_paths = [dataset_path[:-1]+'.'+str(i)+'/' for i in range(1,6)]
+
+# for curr_dataset_path in data_subset_paths:
+#     if not os.path.isdir(curr_dataset_path):
+#         # |Skip if directory does not exist
+#         continue
+
+#     state_action_pairs = None
+
+#     # |Check if saved data is available
+#     curr_dataset_scenes = set(sc_file.replace('.json', '') for sc_file in listdir(curr_dataset_path))
+#     for srFile in simulation_results_files:
+#         if "baseline_state_action_pairs_" in srFile:
+#             with open(srFile, 'rb') as opn_file:
+#                 state_action_pairs = pickle.load(opn_file)
+#             #2# |Ensure the correct file is being loaded
+#             fileScenes = set(state_action_pairs.keys()); fileScenes.remove('params'); fileScenes.remove('dict_structure')
+#             if fileScenes == curr_dataset_scenes and state_action_pairs["params"] == heuristic_params:
+#                 print(f"Synthetic baseline data for {curr_dataset_path.split('/')[-2]} already exists in file: {srFile}")
+#                 break
+#             else:
+#                 state_action_pairs = None
+
+#     if state_action_pairs is None and \
+#         all(env_path2name(scene_path_) in scene_constr_dict.keys() for scene_path_ in train_loader.dataset):
+
+#         print(f"Could not find baseline data for {curr_dataset_path.split('/')[-2]}. Now computing.")
+        
+#         # |Ensure complete removal of existing instances before re-initialization
+#         env.close(); env_multi_agent.close()
+#         del env, env_multi_agent
+#         gc.collect()
+        
+#         # Instantiate Variables
+#         num_parallel_envs = total_envs = len(listdir(curr_dataset_path))
+#         env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
+#                                                                                         training_config = training_config,
+#                                                                                         device = device,
+#                                                                                         num_parallel_envs = num_parallel_envs,
+#                                                                                         dataset_path = curr_dataset_path,
+#                                                                                         max_agents = max_agents,
+#                                                                                         total_envs = total_envs,
+#                                                                                         sim_agent_path= "daphne-cornelisse/policy_S10_000_02_27",
+#                                                                                     )
+
+#         lambdaPath = simulation_results_path + f"lambda{heuristic_params['ego_distance']}_"
+#         state_action_pairs = generate_baseline_data(sim_agent=sim_agent,
+#                                                     num_parallel_envs=num_parallel_envs,
+#                                                     max_agents=max_agents,
+#                                                     sample_size=trajectory_count_baseline,
+#                                                     device=device,
+#                                                     train_loader=train_loader,
+#                                                     env=env,
+#                                                     env_multi_agent=env_multi_agent,
+#                                                     observed_agents_count=observed_agents_count,
+#                                                     construal_size=construal_size,
+#                                                     selected_construals=scene_constr_dict,
+#                                                     generate_animations=False)
+                
+#         #2# |Save data
+#         savefl_path = simulation_results_path+processID+"_"+"baseline_state_action_pairs_"+str(datetime.now())+".pickle"
+#         state_action_pairs["params"] = heuristic_params # Save parameters for data generation
+#         save_pickle(savefl_path, state_action_pairs, "Baseline")
+
+
+
+# |Loop through all files in batches
+for batch in tqdm(train_loader, desc=f"Processing Waymo batches",
+                    total=len(train_loader), colour="blue"):
+    # |BATCHING LOGIC: https://github.com/Emerge-Lab/gpudrive/blob/bd618895acde90d8c7d880b32d87942efe42e21d/examples/experimental/eval_utils.py#L316
+    # |Update simulator with the new batch of data
+    env.swap_data_batch(batch)
+    env_multi_agent.swap_data_batch(batch)
 
     state_action_pairs = None
 
     # |Check if saved data is available
-    curr_dataset_scenes = set(sc_file.replace('.json', '') for sc_file in listdir(curr_dataset_path))
+    curr_dataset_scenes = set(env_path2name(scene_path_) for scene_path_ in env.data_batch)
     for srFile in simulation_results_files:
-        if "baseline_state_action_pairs_" in srFile:
+        if "baseline_state_action_pairs" in srFile:
             with open(srFile, 'rb') as opn_file:
                 state_action_pairs = pickle.load(opn_file)
             #2# |Ensure the correct file is being loaded
             fileScenes = set(state_action_pairs.keys()); fileScenes.remove('params'); fileScenes.remove('dict_structure')
+            # print(fileScenes)
+            # print(curr_dataset_scenes)
             if fileScenes == curr_dataset_scenes and state_action_pairs["params"] == heuristic_params:
-                print(f"Synthetic baseline data for {curr_dataset_path.split('/')[-2]} already exists in file: {srFile}")
+                print(f"Synthetic baseline data for current batch already exists in file: {srFile}")
                 break
             else:
                 state_action_pairs = None
 
     if state_action_pairs is None and \
-        all(env_path2name(scene_path_) in scene_constr_dict.keys() for scene_path_ in train_loader.dataset):
+        all(env_path2name(scene_path_) in scene_constr_dict.keys() for scene_path_ in env.data_batch):
 
-        print(f"Could not find baseline data for {curr_dataset_path.split('/')[-2]}. Now computing.")
-        
-        # |Ensure complete removal of existing instances before re-initialization
-        env.close(); env_multi_agent.close()
-        del env, env_multi_agent
-        gc.collect()
-        
-        # Instantiate Variables
-        num_parallel_envs = total_envs = len(listdir(curr_dataset_path))
-        env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
-                                                                                        training_config = training_config,
-                                                                                        device = device,
-                                                                                        num_parallel_envs = num_parallel_envs,
-                                                                                        dataset_path = curr_dataset_path,
-                                                                                        max_agents = max_agents,
-                                                                                        total_envs = total_envs,
-                                                                                        sim_agent_path= "daphne-cornelisse/policy_S10_000_02_27",
-                                                                                    )
-
+        print(f"Could not find baseline data for current batch. Now computing.")
+                
         lambdaPath = simulation_results_path + f"lambda{heuristic_params['ego_distance']}_"
         state_action_pairs = generate_baseline_data(sim_agent=sim_agent,
                                                     num_parallel_envs=num_parallel_envs,
                                                     max_agents=max_agents,
                                                     sample_size=trajectory_count_baseline,
                                                     device=device,
-                                                    train_loader=train_loader,
                                                     env=env,
                                                     env_multi_agent=env_multi_agent,
                                                     observed_agents_count=observed_agents_count,
