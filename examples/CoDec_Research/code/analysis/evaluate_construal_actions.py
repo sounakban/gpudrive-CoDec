@@ -127,9 +127,13 @@ def evaluate_construals(baseline_data: Dict,
             continue
         construal_action_likelihoods[scene_name] = {}
         print("Processing Scene: ", scene_name)
-        control_mask = scene_info['control_mask']
-        max_agents = scene_info['max_agents']
-        moving_veh_indices = scene_info['moving_veh_ind']
+        if set(('control_mask','max_agents','moving_veh_ind')).issubset(set(scene_info.keys())):
+            control_mask = scene_info['control_mask']
+            max_agents = scene_info['max_agents']
+            moving_veh_indices = scene_info['moving_veh_ind']
+        else:
+            raise ValueError("Please ensure baseline data contains control mask, max num of agents, "
+                                "and indices of all vehicles of interest")
         construal_count = get_construal_count(max_agents, moving_veh_indices, construal_size)
         prev_obs = None     # Used in code debugging below
         for baseline_constr_indxs, baseline_constr_info in scene_info.items():

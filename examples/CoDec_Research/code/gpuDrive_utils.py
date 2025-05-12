@@ -33,6 +33,8 @@ def get_gpuDrive_vars(training_config,
                       max_agents: int, 
                       total_envs: int,
                       sim_agent_path: str = "daphne-cornelisse/policy_S10_000_02_27",
+                      env: GPUDriveConstrualEnv = None,
+                      env_multi_agent: GPUDriveConstrualEnv = None,
                       ):
     # |Create environment config
     env_config = dataclasses.replace(
@@ -66,29 +68,35 @@ def get_gpuDrive_vars(training_config,
         sample_with_replacement=False,
     )
 
-    # # |Make env [Original]
-    # env = GPUDriveTorchEnv(
-    #     config=env_config,
-    #     data_loader=train_loader,
-    #     max_cont_agents=training_config.max_controlled_agents,
-    #     device=device,
-    # )
+    if env is None:
+        # Only initialize environment if one does not exist
+        #   (Multiple initializations may lead to segmentation fault)
+        # |Make env [Construal]
+        env = GPUDriveConstrualEnv(
+            config=env_config,
+            data_loader=train_loader,
+            max_cont_agents=training_config.max_controlled_agents,
+            device=device,
+        )
 
-    # |Make env [Construal]
-    env = GPUDriveConstrualEnv(
-        config=env_config,
-        data_loader=train_loader,
-        max_cont_agents=training_config.max_controlled_agents,
-        device=device,
-    )
+        # # |DEBUG: Make env [Original]
+        # env = GPUDriveTorchEnv(
+        #     config=env_config,
+        #     data_loader=train_loader,
+        #     max_cont_agents=training_config.max_controlled_agents,
+        #     device=device,
+        # )
 
-    # |Create multi-agent environment to get information about moving vehicles
-    env_multi_agent = GPUDriveConstrualEnv(
-                        config=env_config,
-                        data_loader=train_loader,
-                        max_cont_agents=max_agents,
-                        device="cpu",
-                        )
+    if env_multi_agent is None:
+        # Only initialize environment if one does not exist
+        #   (Multiple initializations may lead to segmentation fault)
+        # |Create multi-agent environment to get information about moving vehicles
+        env_multi_agent = GPUDriveConstrualEnv(
+                            config=env_config,
+                            data_loader=train_loader,
+                            max_cont_agents=max_agents,
+                            device="cpu",
+                            )
 
     # |Import Pre-trained Model
     sim_agent = NeuralNet.from_pretrained(sim_agent_path).to(device)
