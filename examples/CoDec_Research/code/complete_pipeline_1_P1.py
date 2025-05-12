@@ -205,6 +205,7 @@ for curr_dataset_path in data_subset_paths:
     num_parallel_envs = total_envs = len(listdir(curr_dataset_path))
     state_action_pairs = None
 
+    env.close; env_multi_agent.close()
     del env, env_multi_agent
     time.sleep(5)       # Let madrona clear memory to avoid multiple parallel instances of GPUDrive
     
