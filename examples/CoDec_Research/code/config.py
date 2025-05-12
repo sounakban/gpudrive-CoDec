@@ -20,4 +20,4 @@ server_config = {
                 'trajectory_count_baseline': 3,                           # Number of baseline trajectories to generate per construal
                 }
 
-active_config = local_config
+active_config = server_config
