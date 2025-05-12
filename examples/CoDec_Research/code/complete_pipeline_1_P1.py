@@ -104,18 +104,6 @@ total_envs = min(total_envs, len(listdir(dataset_path)))
 #   --- We might need more expressive utility values as our problem becomes more complex
 
 
-### Instantiate Variables ###
-
-env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
-                                                                                training_config = training_config,
-                                                                                device = device,
-                                                                                num_parallel_envs = num_parallel_envs,
-                                                                                dataset_path = dataset_path,
-                                                                                max_agents = max_agents,
-                                                                                total_envs = total_envs,
-                                                                                sim_agent_path= "daphne-cornelisse/policy_S10_000_02_27",
-                                                                            )
-
 
 
 
@@ -146,6 +134,17 @@ for srFile in simulation_results_files:
             default_values = None
 
 if default_values is None:
+    # Instantiate Variables
+    env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
+                                                                                    training_config = training_config,
+                                                                                    device = device,
+                                                                                    num_parallel_envs = num_parallel_envs,
+                                                                                    dataset_path = dataset_path,
+                                                                                    max_agents = max_agents,
+                                                                                    total_envs = total_envs,
+                                                                                    sim_agent_path= "daphne-cornelisse/policy_S10_000_02_27",
+                                                                            )
+
     default_values, traj_obs, ground_truth, _ = generate_all_construal_trajnval(sim_agent=sim_agent,
                                                                                 observed_agents_count=observed_agents_count,
                                                                                 construal_size=construal_size,
@@ -209,6 +208,7 @@ for curr_dataset_path in data_subset_paths:
     del env, env_multi_agent
     time.sleep(5)       # Let madrona clear memory to avoid multiple parallel instances of GPUDrive
     
+    # Instantiate Variables
     env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
                                                                                     training_config = training_config,
                                                                                     device = device,
