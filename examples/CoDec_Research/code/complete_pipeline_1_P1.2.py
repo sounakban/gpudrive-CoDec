@@ -163,7 +163,10 @@ for curr_dataset_path in data_subset_paths:
         all(env_path2name(scene_path_) in scene_constr_dict.keys() for scene_path_ in train_loader.dataset):
 
         print(f"Could not find baseline data for {curr_dataset_path.split('/')[-2]}. Now computing.")
-        # del env, env_multi_agent
+        
+        # |Ensure complete removal of existing instances before re-initialization
+        env.close(); env_multi_agent.close()
+        del env, env_multi_agent
         gc.collect()
         
         # Instantiate Variables
@@ -191,9 +194,7 @@ for curr_dataset_path in data_subset_paths:
                                                     construal_size=construal_size,
                                                     selected_construals=scene_constr_dict,
                                                     generate_animations=False)
-        
-        env.close(); env_multi_agent.close()
-        
+                
         #2# |Save data
         savefl_path = simulation_results_path+processID+"_"+"baseline_state_action_pairs_"+str(datetime.now())+".pickle"
         state_action_pairs["params"] = heuristic_params # Save parameters for data generation
