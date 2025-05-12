@@ -6,7 +6,7 @@ local_config = {
                 'device': "'cpu'",
                 'sample_size_utility': 1,                                 # Number of samples to compute expected utility of a construal
                 'construal_count_baseline': 2,                            # Number of construals to sample for baseline data generation
-                'trajectory_count_baseline': 1,                           # Number of baseline trajectories to generate per construal
+                'trajectory_count_baseline': 2,                           # Number of baseline trajectories to generate per construal
                 }
 
 server_config = {
