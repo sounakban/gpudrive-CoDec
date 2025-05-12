@@ -8,6 +8,7 @@ from functools import cache
 from os import listdir
 import json
 import pickle
+import gc
 from datetime import datetime
 from functools import partial
 
@@ -63,7 +64,7 @@ start_time = time.perf_counter()
 heuristic_params = {"ego_distance": 0.5, "cardinality": 1} # Hueristics and their weight parameters (to be inferred)
 
 construal_count_baseline = 2 # Number of construals to sample for baseline data generation
-trajectory_count_baseline = 3 # Number of baseline trajectories to generate per construal
+trajectory_count_baseline = 1 # Number of baseline trajectories to generate per construal
 
 
 ### Specify Environment Configuration ###
@@ -76,32 +77,37 @@ simulation_results_files = [simulation_results_path+fl_name for fl_name in listd
 training_config = load_config("examples/experimental/config/reliable_agents_params")
 
 # |Set scenario path
-dataset_path = 'data/processed/construal/Set2/'
+dataset_path = 'data/processed/construal/Settest/'
 processID = dataset_path.split('/')[-2]        # Used for storing and retrieving relevant data
 
 # |Set simulator config
 max_agents = training_config.max_controlled_agents   # Get total vehicle count
-num_parallel_envs = 25
-total_envs = 25
-# device = "cpu" # cpu just because we're in a notebook
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+num_parallel_envs = 2
+total_envs = 4
+device = "cpu" # cpu just because we're in a notebook
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # |Set construal config
 construal_size = 1
 observed_agents_count = max_agents - 1      # Agents observed except self (used for vector sizes)
-sample_size_utility = 40                    # Number of samples to compute expected utility of a construal
+sample_size_utility = 1                    # Number of samples to compute expected utility of a construal
 
 # |Other changes to variables
 training_config.max_controlled_agents = 1    # Control only the first vehicle in the environment
 total_envs = min(total_envs, len(listdir(dataset_path)))
 
 
-# TODO (Post NeurIPS): Optimize code
-# 1. Reduce redunduncy in baseline data (use data-class to save data)
-# 2. Convert for loops to list comprihension in env_torch.py: function get_structured_observation
-# 3. We might have to reevaluate our measure of construal utilities or use other data
-#   --- This is great for inferring discrete values of one parameter 
-#   --- We might need more expressive utility values as our problem becomes more complex
+env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
+                                                                                training_config=training_config,
+                                                                                device=device,
+                                                                                num_parallel_envs=num_parallel_envs,
+                                                                                dataset_path=dataset_path,
+                                                                                max_agents=max_agents,
+                                                                                total_envs=total_envs,
+                                                                                sim_agent_path="daphne-cornelisse/policy_S10_000_02_27",
+                                                                                env='do not instantiate',
+                                                                                env_multi_agent='do not instantiate',
+                                                                        )
 
 
 ### Instantiate Variables ###
@@ -116,6 +122,14 @@ env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
                                                                         )
 
 
+
+
+# TODO (Post NeurIPS): Optimize code
+# 1. Reduce redunduncy in baseline data (use data-class to save data)
+# 2. Convert for loops to list comprihension in env_torch.py: function get_structured_observation
+# 3. We might have to reevaluate our measure of construal utilities or use other data
+#   --- This is great for inferring discrete values of one parameter 
+#   --- We might need more expressive utility values as our problem becomes more complex
 
 
 
@@ -187,6 +201,8 @@ def sample_construals(heuristic_values: dict, sample_count: int) -> dict:
 
 scene_constr_dict = sample_construals(heuristic_values, sample_count=construal_count_baseline)
 
+env.close(); env_multi_agent.close()
+
 
 
 
@@ -200,39 +216,40 @@ for curr_dataset_path in data_subset_paths:
         # |Skip if directory does not exist
         continue
 
-    num_parallel_envs = total_envs = len(listdir(curr_dataset_path))
     state_action_pairs = None
 
-    env.close(); env_multi_agent.close()
-    del env, env_multi_agent
-    time.sleep(5)       # Let madrona clear memory to avoid multiple parallel instances of GPUDrive
-    
-    # Instantiate Variables
-    env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
-                                                                                    training_config = training_config,
-                                                                                    device = device,
-                                                                                    num_parallel_envs = num_parallel_envs,
-                                                                                    dataset_path = curr_dataset_path,
-                                                                                    max_agents = max_agents,
-                                                                                    total_envs = total_envs,
-                                                                                    sim_agent_path= "daphne-cornelisse/policy_S10_000_02_27",
-                                                                                )
-
     # |Check if saved data is available
+    curr_dataset_scenes = set(sc_file.replace('.json', '') for sc_file in listdir(curr_dataset_path))
     for srFile in simulation_results_files:
         if "baseline_state_action_pairs_" in srFile:
             with open(srFile, 'rb') as opn_file:
                 state_action_pairs = pickle.load(opn_file)
             #2# |Ensure the correct file is being loaded
-            if all(env_path2name(scene_path_) in state_action_pairs.keys() for scene_path_ in train_loader.dataset) and \
-                    state_action_pairs["params"] == heuristic_params:
-                print(f"Synthetic baseline data for current batch already exists in file: {srFile}")
+            fileScenes = set(state_action_pairs.keys()); fileScenes.remove('params'); fileScenes.remove('dict_structure')
+            if fileScenes == curr_dataset_scenes and state_action_pairs["params"] == heuristic_params:
+                print(f"Synthetic baseline data for {curr_dataset_path.split('/')[-2]} already exists in file: {srFile}")
                 break
             else:
                 state_action_pairs = None
 
     if state_action_pairs is None and \
         all(env_path2name(scene_path_) in scene_constr_dict.keys() for scene_path_ in train_loader.dataset):
+
+        print(f"Could not find baseline data for {curr_dataset_path.split('/')[-2]}. Now computing.")
+        # del env, env_multi_agent
+        # gc.collect()
+        
+        # Instantiate Variables
+        num_parallel_envs = total_envs = len(listdir(curr_dataset_path))
+        env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
+                                                                                        training_config = training_config,
+                                                                                        device = device,
+                                                                                        num_parallel_envs = num_parallel_envs,
+                                                                                        dataset_path = curr_dataset_path,
+                                                                                        max_agents = max_agents,
+                                                                                        total_envs = total_envs,
+                                                                                        sim_agent_path= "daphne-cornelisse/policy_S10_000_02_27",
+                                                                                    )
 
         lambdaPath = simulation_results_path + f"lambda{heuristic_params['ego_distance']}_"
         state_action_pairs = generate_baseline_data(sim_agent=sim_agent,
@@ -247,6 +264,9 @@ for curr_dataset_path in data_subset_paths:
                                                     construal_size=construal_size,
                                                     selected_construals=scene_constr_dict,
                                                     generate_animations=False)
+        
+        env.close(); env_multi_agent.close()
+        
         #2# |Save data
         savefl_path = simulation_results_path+processID+"_"+"baseline_state_action_pairs_"+str(datetime.now())+".pickle"
         state_action_pairs["params"] = heuristic_params # Save parameters for data generation

@@ -44,6 +44,7 @@ from examples.CoDec_Research.code.simulation.construal_main import generate_base
                                                                     get_constral_heurisrtic_values, generate_all_construal_trajnval
 from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars, save_pickle
 from examples.CoDec_Research.code.analysis.evaluate_construal_actions import evaluate_construals, get_best_construals_likelihood
+from examples.CoDec_Research.code.config import local_config, server_config
 
 
 # Function to extract filename from path
@@ -57,12 +58,13 @@ start_time = time.perf_counter()
 ################ SET EXP PARAMETERS ################
 ####################################################
 
+curr_config = server_config
 
 # Parameters for Inference
-heuristic_params = {"ego_distance": 0.5, "cardinality": 1} # Hueristics and their weight parameters (to be inferred)
+heuristic_params = {"ego_distance": 0.5, "cardinality": 1}              # Hueristics and their weight parameters (to be inferred)
 
-construal_count_baseline = 2 # Number of construals to sample for baseline data generation
-trajectory_count_baseline = 3 # Number of baseline trajectories to generate per construal
+construal_count_baseline = curr_config['construal_count_baseline']      # Number of construals to sample for baseline data generation
+trajectory_count_baseline = curr_config['trajectory_count_baseline']    # Number of baseline trajectories to generate per construal
 
 
 ### Specify Environment Configuration ###
@@ -75,37 +77,37 @@ simulation_results_files = [simulation_results_path+fl_name for fl_name in listd
 training_config = load_config("examples/experimental/config/reliable_agents_params")
 
 # |Set scenario path
-dataset_path = 'data/processed/construal/Set2/'
-processID = dataset_path.split('/')[-2]        # Used for storing and retrieving relevant data
+dataset_path = curr_config['dataset_path']
+processID = dataset_path.split('/')[-2]                 # Used for storing and retrieving relevant data
 
 # |Set simulator config
-max_agents = training_config.max_controlled_agents   # Get total vehicle count
-num_parallel_envs = 25
-total_envs = 25
-# device = "cpu" # cpu just because we're in a notebook
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+max_agents = training_config.max_controlled_agents      # Get total vehicle count
+num_parallel_envs = curr_config['num_parallel_envs']
+total_envs = curr_config['total_envs']
+device = eval(curr_config['device'])
 
 # |Set construal config
 construal_size = 1
-observed_agents_count = max_agents - 1      # Agents observed except self (used for vector sizes)
-sample_size_utility = 40                    # Number of samples to compute expected utility of a construal
+observed_agents_count = max_agents - 1                              # Agents observed except self (used for vector sizes)
+sample_size_utility = curr_config['sample_size_utility']            # Number of samples to compute expected utility of a construal
 
 # |Other changes to variables
-training_config.max_controlled_agents = 1    # Control only the first vehicle in the environment
+training_config.max_controlled_agents = 1                           # Control only the first vehicle in the environment
 total_envs = min(total_envs, len(listdir(dataset_path)))
 
 
-### Instantiate Variables ###
-
 env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
-                                                                                training_config = training_config,
-                                                                                device = device,
-                                                                                num_parallel_envs = num_parallel_envs,
-                                                                                dataset_path = dataset_path,
-                                                                                max_agents = max_agents,
-                                                                                total_envs = total_envs,
-                                                                                sim_agent_path= "daphne-cornelisse/policy_S10_000_02_27",
-                                                                            )
+                                                                                training_config=training_config,
+                                                                                device=device,
+                                                                                num_parallel_envs=num_parallel_envs,
+                                                                                dataset_path=dataset_path,
+                                                                                max_agents=max_agents,
+                                                                                total_envs=total_envs,
+                                                                                sim_agent_path="daphne-cornelisse/policy_S10_000_02_27",
+                                                                        )
+
+
+
 
 
 
@@ -210,7 +212,7 @@ for srFile in simulation_results_files:
         else:
             default_values = None
 if default_values is None:
-    raise FileNotFoundError("Could not find saved file for construal valuesfor current scenes")
+    raise FileNotFoundError("Could not find saved file for construal values for current scenes")
 
 
 # |Get probability of lambda values
