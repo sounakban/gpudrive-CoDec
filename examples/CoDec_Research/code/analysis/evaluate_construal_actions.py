@@ -35,7 +35,7 @@ from gpudrive.networks.late_fusion import NeuralNet
 
 
 @cache
-def get_masked_vals(size: int, dtype: torch.dtype) -> torch.Tensor:
+def get_masked_vals(size: int, dtype: torch.dtype, device: torch.device) -> torch.Tensor:
     """
     Create a tensor of masked values.
 
@@ -45,7 +45,7 @@ def get_masked_vals(size: int, dtype: torch.dtype) -> torch.Tensor:
     Returns:
         torch.Tensor: Tensor of masked values.
     """
-    return torch.tensor([0,]*size, dtype=dtype)
+    return torch.tensor([0,]*size, dtype=dtype, device=device)
 
 
 
@@ -63,7 +63,9 @@ def process_state(raw_state: List, construal_mask: torch.tensor, timestep: int) 
     partner_observations = raw_state[1].clone()
     road_map_observations = raw_state[2].clone()
     
-    masked_values = get_masked_vals(partner_observations.shape[-1], partner_observations.dtype)  # Create masked values tensor
+    masked_values = get_masked_vals(partner_observations.shape[-1], 
+                                    partner_observations.dtype, 
+                                    partner_observations.device)  # Create masked values tensor
     partner_observations[construal_mask] = masked_values         # Mask non-construal objects
     # if timestep == 0:
     #     #|DEBUG LOGIC

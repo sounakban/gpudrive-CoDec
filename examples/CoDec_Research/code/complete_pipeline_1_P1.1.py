@@ -117,9 +117,14 @@ env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
 # TODO (Post NeurIPS): Optimize code
 # 1. Reduce redunduncy in baseline data (use data-class to save data)
 # 2. Convert for loops to list comprihension in env_torch.py: function get_structured_observation
-# 3. We might have to reevaluate our measure of construal utilities or use other data
+# 3. We might have to re-evaluate our measure of construal utilities or use other data
 #   --- This is great for inferring discrete values of one parameter 
 #   --- We might need more expressive utility values as our problem becomes more complex
+#   --- I was thinking if we could train an attentional network alongside the PPO agent, which could 
+#       provide behavioral utilities of various objects in the environment, and could be used to 
+#       estimate the behavioral utility of various construals.
+#   --- Or any construal, containing vehicles whith whom the trajectories of the ego vehicle
+#       intersect in the next n-seconds
 
 
 
