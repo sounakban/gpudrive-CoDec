@@ -151,6 +151,7 @@ if construal_action_likelihoods is None:
             if set(state_action_pairs.keys()).issubset(set(curr_data_batch)) and fileParams == heuristic_params:
                 print(f"Using synthetic baseline data from file: {srFile}")
                 construal_action_likelihoods.update(evaluate_construals(state_action_pairs, construal_size, sim_agent, device=device))
+            # |Clear memory for large variable, once it has served its purpose
             del state_action_pairs
             gc.collect()
 
@@ -165,8 +166,6 @@ if construal_action_likelihoods is None:
 # |Use parameters only for matching data identity (not needed beyond this point)
 construal_action_likelihoods.pop("params")
 
-# |Clear memory for large variable, once it has served its purpose
-del state_action_pairs
 
 
 
