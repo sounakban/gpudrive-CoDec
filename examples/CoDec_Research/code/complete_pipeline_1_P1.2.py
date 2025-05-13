@@ -130,6 +130,7 @@ for srFile in simulation_results_files:
         #2# |Ensure the correct file is being loaded
         if all(env_path2name(scene_path_) in scene_constr_dict.keys() for scene_path_ in train_loader.dataset):
             print(f"Using sampled construal information from file: {srFile}")
+            file_params = scene_constr_dict.pop('params')
             break
         else:
             scene_constr_dict = None

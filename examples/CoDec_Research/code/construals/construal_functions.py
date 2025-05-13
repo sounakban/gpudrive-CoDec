@@ -169,7 +169,7 @@ def get_selected_construal_byIndex(total_obj_count: int,
         If index is greater than number of constrauls it returns a default value, with no observable objects
     '''
     all_construals = get_construals(total_obj_count, target_obj_indices, construal_size, expanded_mask, device)
-    selected_construal_indices = list(selected_construals.keys())
+    selected_construal_indices = list(selected_construals.keys()) if isinstance(selected_construals, dict) else selected_construals
     selected_construal_info = [curr_constr_info_ for curr_constr_info_ in all_construals.values() if curr_constr_info_[0] in selected_construal_indices]
     return (selected_construal_info[indx], False) if indx < len(selected_construal_info) else (selected_construal_info[-1], True)
 

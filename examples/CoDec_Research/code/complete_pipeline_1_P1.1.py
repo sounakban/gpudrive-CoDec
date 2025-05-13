@@ -124,7 +124,8 @@ env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
 #       provide behavioral utilities of various objects in the environment, and could be used to 
 #       estimate the behavioral utility of various construals.
 #   --- Or any construal, containing vehicles whith whom the trajectories of the ego vehicle
-#       intersect in the next n-seconds
+#       intersect in the next n-seconds (can be justified by the fact that experts often 
+#       make decisions based on forward simulations)
 
 
 
@@ -203,9 +204,11 @@ if scene_constr_dict is None:
         for scene_name, construal_info in heuristic_values.items():
             constr_indices, constr_values = zip(*construal_info.items())
             sampled_indices = torch.multinomial(torch.tensor(constr_values), num_samples=sample_count, \
-                                                    replacement=False).tolist()
-            sampled_construals[scene_name] = {constr_indices[i]: constr_values[i] for i in sampled_indices}
-            print(f"Sampled construals for scene {scene_name}: {sampled_construals[scene_name].keys()}")
+                                                    replacement=True).tolist()
+            # sampled_construals[scene_name] = {constr_indices[i]: constr_values[i] for i in sampled_indices}
+            # print(f"Sampled construals for scene {scene_name}: {sampled_construals[scene_name].keys()}")
+            sampled_construals[scene_name] = tuple(constr_indices[i] for i in sampled_indices)
+            print(f"Sampled construals for scene {scene_name}: {sampled_construals[scene_name]}")
 
         return sampled_construals
 

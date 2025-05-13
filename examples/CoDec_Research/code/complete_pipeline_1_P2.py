@@ -6,6 +6,8 @@ from functools import cache
 from os import listdir
 import json
 import pickle
+import gc
+
 from datetime import datetime
 from functools import partial
 
@@ -149,6 +151,8 @@ if construal_action_likelihoods is None:
             if set(state_action_pairs.keys()).issubset(set(curr_data_batch)) and fileParams == heuristic_params:
                 print(f"Using synthetic baseline data from file: {srFile}")
                 construal_action_likelihoods.update(evaluate_construals(state_action_pairs, construal_size, sim_agent, device=device))
+            del state_action_pairs
+            gc.collect()
 
     if construal_action_likelihoods == {}:
         raise FileNotFoundError("Compatible baseline data not found. Please run part 1 of pipiline on current scenes.")
