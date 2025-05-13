@@ -171,8 +171,8 @@ def evaluate_construals(baseline_data: Dict,
                     # print([(torch.argmax(pred_dist_), pred_dist_[torch.argmax(pred_dist_)]) for tru_dist_, pred_dist_ in zip(true_action_dist, pred_action_dist)
                     #             if torch.argmax(tru_dist_).item() != torch.argmax(pred_dist_).item()][0])  
                     construal_action_likelihoods[scene_name][baseline_constr_indxs][sample_num][test_construal_indices] = \
-                                                                                {"true_likelihoods": true_action_dist,
-                                                                                "pred_likelihoods": pred_action_dist,
+                                                                                {"true_actn_dist": true_action_dist,
+                                                                                "pred_actn_dist": pred_action_dist,
                                                                                 "likelihood": torch.prod(likelihood),
                                                                                 "log_likelihood": -1*sum(torch.log(likelihood)),
                                                                                 "log_likelihood_diff": sum(torch.log(likelihood_diff)),}

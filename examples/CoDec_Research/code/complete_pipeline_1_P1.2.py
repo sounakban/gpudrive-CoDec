@@ -73,7 +73,7 @@ trajectory_count_baseline = curr_config['trajectory_count_baseline']    # Number
 ### Specify Environment Configuration ###
 
 # |Location to store (and retrieve pre-computed) simulation results
-simulation_results_path = "examples/CoDec_Research/results/simulation_results/"
+simulation_results_path = curr_config["simulation_results_path"]
 simulation_results_files = [simulation_results_path+fl_name for fl_name in listdir(simulation_results_path)]
 
 # |Model Config (on which model was trained)
@@ -187,6 +187,9 @@ for batch in tqdm(train_loader, desc=f"Processing Waymo batches",
         savefl_path = simulation_results_path+processID+"_"+"baseline_state_action_pairs_"+str(datetime.now())+".pickle"
         state_action_pairs["params"] = heuristic_params # Save parameters for data generation
         save_pickle(savefl_path, state_action_pairs, "Baseline")
+        # |Clear memory for large variable
+        del state_action_pairs
+        gc.collect()
 
 
 

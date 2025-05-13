@@ -72,7 +72,7 @@ trajectory_count_baseline = curr_config['trajectory_count_baseline']    # Number
 ### Specify Environment Configuration ###
 
 # |Location to store (and retrieve pre-computed) simulation results
-simulation_results_path = "examples/CoDec_Research/results/simulation_results/"
+simulation_results_path = curr_config["simulation_results_path"]
 simulation_results_files = [simulation_results_path+fl_name for fl_name in listdir(simulation_results_path)]
 
 # |Model Config (on which model was trained)
@@ -106,6 +106,8 @@ env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
                                                                                 max_agents=max_agents,
                                                                                 total_envs=total_envs,
                                                                                 sim_agent_path="daphne-cornelisse/policy_S10_000_02_27",
+                                                                                env="Placeholder value to prevent instantiation", 
+                                                                                env_multi_agent="Placeholder value to prevent instantiation",
                                                                         )
 
 
@@ -133,12 +135,13 @@ for srFile in simulation_results_files:
         #2# |Ensure the correct file is being loaded
         if all(env_path2name(scene_path_) in construal_action_likelihoods.keys() for scene_path_ in train_loader.dataset) and \
                 construal_action_likelihoods["params"] == heuristic_params:
-            print(f"Using log-likelihodd measures from file: {srFile}")
+            print(f"Using log-likelihood measures from file: {srFile}")
             break
         else:
             construal_action_likelihoods = None
 
 # Loop through multiple synthetic data files which (combined) contains data for all current scenes
+print("Could not find saved likelihood estimations for this dataset, not computing.")
 if construal_action_likelihoods is None:
     construal_action_likelihoods = {}
     for srFile in simulation_results_files:
@@ -151,7 +154,7 @@ if construal_action_likelihoods is None:
             if set(state_action_pairs.keys()).issubset(set(curr_data_batch)) and fileParams == heuristic_params:
                 print(f"Using synthetic baseline data from file: {srFile}")
                 construal_action_likelihoods.update(evaluate_construals(state_action_pairs, construal_size, sim_agent, device=device))
-            # |Clear memory for large variable, once it has served its purpose
+            # |Clear memory for large variable
             del state_action_pairs
             gc.collect()
 
