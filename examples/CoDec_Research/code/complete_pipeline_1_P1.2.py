@@ -193,6 +193,9 @@ for batch in tqdm(train_loader, desc=f"Processing Waymo batches",
 
 
 
+
+env.close(); env_multi_agent.close()
+
 # |Print the execution time
 execution_time = time.perf_counter() - start_time
 print(f"Execution time: {math.floor(execution_time/60)} minutes and {execution_time%60:.1f} seconds")

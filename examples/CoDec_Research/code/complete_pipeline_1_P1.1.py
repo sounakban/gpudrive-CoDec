@@ -235,10 +235,10 @@ if scene_constr_dict is None:
     scene_constr_dict["params"] = heuristic_params
     save_pickle(scene_constrFile, scene_constr_dict, "Sampled construals")
 
-    env.close(); env_multi_agent.close()
 
 
 
+env.close(); env_multi_agent.close()
 
 # |Print the execution time
 execution_time = time.perf_counter() - start_time
