@@ -102,7 +102,7 @@ def get_gpuDrive_vars(training_config,
             max_cont_agents=training_config.max_controlled_agents,
             device=device,
         )
-    print("Initialized default environment")
+
         # # |DEBUG: Make env [Original]
         # env = GPUDriveTorchEnv(
         #     config=env_config,
@@ -110,6 +110,7 @@ def get_gpuDrive_vars(training_config,
         #     max_cont_agents=training_config.max_controlled_agents,
         #     device=device,
         # )
+        print("Initialized default environment")
 
     if env_multi_agent is None:
         # Only initialize environment if one does not exist
@@ -121,7 +122,7 @@ def get_gpuDrive_vars(training_config,
                             max_cont_agents=max_agents,
                             device="cpu",
                             )
-    print("Initialized multi-agent environment")
+        print("Initialized multi-agent environment")
 
     # |Import Pre-trained Model
     sim_agent = NeuralNet.from_pretrained(sim_agent_path).to(device)

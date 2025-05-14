@@ -106,8 +106,6 @@ env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
                                                                                 max_agents=max_agents,
                                                                                 total_envs=total_envs,
                                                                                 sim_agent_path="daphne-cornelisse/policy_S10_000_02_27",
-                                                                                env="Placeholder value to prevent instantiation", 
-                                                                                env_multi_agent="Placeholder value to prevent instantiation",
                                                                         )
 
 
