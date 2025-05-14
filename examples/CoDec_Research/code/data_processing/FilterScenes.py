@@ -42,7 +42,7 @@ config = load_config("examples/experimental/config/reliable_agents_params")
 print(config)
 
 # dataset_path='data/processed/examples/'
-dataset_path='data/processed/training/'
+dataset_path='data/processed/validation/'
 # dataset_path = 'data/processed/construal/'
 
 max_agents = config.max_controlled_agents
@@ -312,6 +312,7 @@ def fileterScenes_2(dirpath):
         with open(scFile, 'r') as opn_file:
             data = json.load(opn_file)
         sdc_veh_indx = data['metadata']['sdc_track_index']
+        print(sdc_veh_indx, len(data['objects']))
         sdc_veh_data = data['objects'][sdc_veh_indx]
         traj_complexity[scFile] = get_traj_complexity(sdc_veh_data, data['objects'], complexity_type = INTERSECTION_COMPLEXITY)
     return traj_complexity
@@ -379,4 +380,4 @@ traj_complexity_topN = get_topN_traj(all_traRatios,final_sceneCount)
 import shutil
 
 for fl_num, fl in enumerate(traj_complexity_topN.keys()):
-    shutil.copyfile(fl, 'data/processed/construal/' + str(fl_num) + '_' + fl.split('/')[-1])
+    shutil.copyfile(fl, 'data/processed/construal/testing/' + str(fl_num) + '_' + fl.split('/')[-1])

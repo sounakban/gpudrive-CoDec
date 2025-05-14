@@ -199,9 +199,11 @@ def get_construal_count(total_obs_count, target_obj_indices, construal_size):
 ### Support Functions ###
 euclidean_distance = lambda point1, point2: math.sqrt(sum([(a - b) ** 2 for a, b in zip(point1, point2)]))
 
+direction_rad = lambda point1, point2: math.atan2(point2[1]-point1[1], point2[0]-point1[0])
 
 
-### Construal Heuristic 1: Distance from ego ###
+
+### Construal Heuristic: Distance from ego ###
 def get_construal_veh_distance_ego(env: GPUDriveConstrualEnv, construal_indices: dict, average: bool = True,
                                normalize: bool = False):
     '''
@@ -251,7 +253,60 @@ def get_construal_veh_distance_ego(env: GPUDriveConstrualEnv, construal_indices:
 
 
 
-### Construal Heuristic 2: Cardinality ###
+### Construal Heuristic: Relative heading from ego ###
+def get_construal_rel_heading_ego(env: GPUDriveConstrualEnv, construal_indices: dict, average: bool = True,
+                               normalize: bool = False):
+    '''
+    Get the angle (in radians) of vehicles (or average) in the construal, relative to the heading of the ego vehicle
+
+    Args:
+        env: The environment object
+        construal_indices: A dictionary whose values are lists of indices corresponding to each construal in a scene
+        average: If true, return the average distance of all vehicles in the construal to the ego vehicle
+        normalize: If true, normalize distances of all vehicles for each scene to [0,1], using min-max scaling
+
+    Returns:
+        dict: The average relative or a list of relavive headings from the ego vehicle to each vehicle in the construal
+    '''
+    curr_data_batch = [env_path2name(env_path_) for env_path_ in env.data_batch]
+    # |Populate dictionary with all relevant information
+    info_dict = dict()
+    for env_num, env_name in enumerate(curr_data_batch):
+        info_dict[env_name] = dict()
+        info_dict[env_name]['ego_index'] = torch.where(env.cont_agent_mask[env_num])[0].item()
+        info_dict[env_name]['construal_indices'] = construal_indices[env_name]
+    
+    # |Get relative directional location for all vehicles
+    all_pos = env.get_data_log_obj().pos_xy
+    relative_heading_dict = dict()
+
+    for env_num, env_name in enumerate(curr_data_batch):
+        relative_heading_dict[env_name] = dict()
+        relative_headings = [direction_rad(all_pos[env_num][info_dict[env_name]['ego_index']][0].cpu().numpy(),
+                                            all_pos[env_num][i][0].cpu().numpy()) 
+                            for i in range(len(all_pos[env_num]))]  
+        ego_vel_x, ego_vel_y = env.get_data_log_obj().vel_xy[env_num][info_dict[env_name]['ego_index']][0]
+        ego_heading = math.atan2(ego_vel_y, ego_vel_x)
+        relative_headings = np.abs(np.array(relative_headings) - ego_heading)
+              
+        if normalize:
+            #2# |Normalize distances to [0,1] using min-max scaling 
+            #2# |Multiplied by -1 as distance is a penalty term, greater values are associated with higher penalty
+            relative_headings = -1*( (relative_headings - relative_headings.min()) / (relative_headings.max() - relative_headings.min()) )
+
+        for curr_indices in info_dict[env_name]['construal_indices']:
+            relative_heading_dict[env_name][curr_indices] = [relative_headings[i] for i in curr_indices]
+            if average:
+                if len(relative_heading_dict[env_name][curr_indices]) > 0:
+                    relative_heading_dict[env_name][curr_indices] = sum(relative_heading_dict[env_name][curr_indices])/len(relative_heading_dict[env_name][curr_indices])
+                else:
+                    relative_heading_dict[env_name][curr_indices] = 0
+                    
+    return relative_heading_dict
+
+
+
+### Construal Heuristic: Cardinality ###
 def get_construal_cardinality(env: GPUDriveConstrualEnv, construal_indices: dict, average: bool = True,
                                normalize: bool = False): 
     '''

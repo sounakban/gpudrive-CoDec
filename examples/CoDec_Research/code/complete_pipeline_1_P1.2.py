@@ -46,7 +46,7 @@ sys.path.append(str(working_dir))
 from gpudrive.utils.config import load_config
 from examples.CoDec_Research.code.simulation.construal_main import generate_baseline_data, generate_selected_construal_traj, \
                                                                     get_constral_heurisrtic_values, generate_all_construal_trajnval
-from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars, save_pickle
+from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars, get_mov_veh_masks, save_pickle
 from examples.CoDec_Research.code.config import get_active_config
 
 
@@ -84,30 +84,37 @@ dataset_path = curr_config['dataset_path']
 processID = dataset_path.split('/')[-2]                 # Used for storing and retrieving relevant data
 
 # |Set simulator config
-max_agents = training_config.max_controlled_agents      # Get total vehicle count
+moving_veh_count = training_config.max_controlled_agents      # Get total vehicle count
 num_parallel_envs = curr_config['num_parallel_envs_light']
 total_envs = curr_config['total_envs']
 device = eval(curr_config['device'])
 
 # |Set construal config
-construal_size = 1
-observed_agents_count = max_agents - 1                              # Agents observed except self (used for vector sizes)
+construal_size = curr_config['construal_size']
+observed_agents_count = moving_veh_count - 1                              # Agents observed except self (used for vector sizes)
 sample_size_utility = curr_config['sample_size_utility']            # Number of samples to compute expected utility of a construal
 
 # |Other changes to variables
 training_config.max_controlled_agents = 1                           # Control only the first vehicle in the environment
 total_envs = min(total_envs, len(listdir(dataset_path)))
 
+moving_veh_masks = get_mov_veh_masks(
+                                    training_config=training_config, 
+                                    device=device, 
+                                    dataset_path=dataset_path,
+                                    max_agents=moving_veh_count,
+                                    result_file_loc=simulation_results_path,
+                                    processID=processID
+                                    )
 
-env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
-                                                                                training_config=training_config,
-                                                                                device=device,
-                                                                                num_parallel_envs=num_parallel_envs,
-                                                                                dataset_path=dataset_path,
-                                                                                max_agents=max_agents,
-                                                                                total_envs=total_envs,
-                                                                                sim_agent_path="daphne-cornelisse/policy_S10_000_02_27",
-                                                                        )
+env_config, train_loader, env, sim_agent = get_gpuDrive_vars(
+                                                            training_config=training_config,
+                                                            device=device,
+                                                            num_parallel_envs=num_parallel_envs,
+                                                            dataset_path=dataset_path,
+                                                            total_envs=total_envs,
+                                                            sim_agent_path="daphne-cornelisse/policy_S10_000_02_27",
+                                                            )
 
 
 
@@ -145,7 +152,6 @@ for batch in tqdm(train_loader, desc=f"Processing Waymo batches",
     # |BATCHING LOGIC: https://github.com/Emerge-Lab/gpudrive/blob/bd618895acde90d8c7d880b32d87942efe42e21d/examples/experimental/eval_utils.py#L316
     # |Update simulator with the new batch of data
     env.swap_data_batch(batch)
-    env_multi_agent.swap_data_batch(batch)
 
     state_action_pairs = None
 
@@ -173,11 +179,11 @@ for batch in tqdm(train_loader, desc=f"Processing Waymo batches",
         lambdaPath = simulation_results_path + f"lambda{heuristic_params['ego_distance']}_"
         state_action_pairs = generate_baseline_data(sim_agent=sim_agent,
                                                     num_parallel_envs=num_parallel_envs,
-                                                    max_agents=max_agents,
+                                                    max_agents=moving_veh_count,
                                                     sample_size=trajectory_count_baseline,
                                                     device=device,
                                                     env=env,
-                                                    env_multi_agent=env_multi_agent,
+                                                    moving_veh_masks=moving_veh_masks,
                                                     observed_agents_count=observed_agents_count,
                                                     construal_size=construal_size,
                                                     selected_construals=scene_constr_dict,
@@ -194,7 +200,7 @@ for batch in tqdm(train_loader, desc=f"Processing Waymo batches",
 
 
 
-env.close(); env_multi_agent.close()
+env.close()
 
 # |Print the execution time
 execution_time = time.perf_counter() - start_time

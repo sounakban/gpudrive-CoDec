@@ -46,8 +46,8 @@ sys.path.append(str(working_dir))
 from gpudrive.utils.config import load_config
 from examples.CoDec_Research.code.simulation.construal_main import generate_baseline_data, generate_selected_construal_traj, \
                                                                     get_constral_heurisrtic_values, generate_all_construal_trajnval
-from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars, save_pickle
-from examples.CoDec_Research.code.config import get_active_config, ego_dis_param_values
+from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars, get_mov_veh_masks, save_pickle
+from examples.CoDec_Research.code.config import get_active_config, ego_dis_param_values, ego_head_param_values
 
 
 # Function to extract filename from path
@@ -64,7 +64,9 @@ start_time = time.perf_counter()
 curr_config = get_active_config()
 
 # Parameters for Inference
-heuristic_params = {"ego_distance": ego_dis_param_values[5], "cardinality": 1}              # Hueristics and their weight parameters (to be inferred)
+heuristic_params = {"ego_distance": ego_dis_param_values[5],            # Hueristics and their weight parameters (to be inferred)
+                    "rel_heading": ego_head_param_values[5],
+                    "cardinality": 1}
 
 construal_count_baseline = curr_config['construal_count_baseline']      # Number of construals to sample for baseline data generation
 trajectory_count_baseline = curr_config['trajectory_count_baseline']    # Number of baseline trajectories to generate per construal
@@ -84,33 +86,37 @@ dataset_path = curr_config['dataset_path']
 processID = dataset_path.split('/')[-2]                 # Used for storing and retrieving relevant data
 
 # |Set simulator config
-max_agents = training_config.max_controlled_agents      # Get total vehicle count
+moving_veh_count = training_config.max_controlled_agents      # Get total vehicle count
 num_parallel_envs = curr_config['num_parallel_envs']
 total_envs = curr_config['total_envs']
 device = eval(curr_config['device'])
 
 # |Set construal config
-construal_size = 1
-observed_agents_count = max_agents - 1                              # Agents observed except self (used for vector sizes)
+construal_size = curr_config['construal_size']
+observed_agents_count = moving_veh_count - 1                              # Agents observed except self (used for vector sizes)
 sample_size_utility = curr_config['sample_size_utility']            # Number of samples to compute expected utility of a construal
 
 # |Other changes to variables
 training_config.max_controlled_agents = 1                           # Control only the first vehicle in the environment
 total_envs = min(total_envs, len(listdir(dataset_path)))
 
+moving_veh_masks = get_mov_veh_masks(
+                                    training_config=training_config, 
+                                    device=device, 
+                                    dataset_path=dataset_path,
+                                    max_agents=moving_veh_count,
+                                    result_file_loc=simulation_results_path,
+                                    processID=processID
+                                    )
 
-env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
-                                                                                training_config=training_config,
-                                                                                device=device,
-                                                                                num_parallel_envs=num_parallel_envs,
-                                                                                dataset_path=dataset_path,
-                                                                                max_agents=max_agents,
-                                                                                total_envs=total_envs,
-                                                                                sim_agent_path="daphne-cornelisse/policy_S10_000_02_27",
-                                                                        )
-
-
-
+env_config, train_loader, env, sim_agent = get_gpuDrive_vars(
+                                                            training_config=training_config,
+                                                            device=device,
+                                                            num_parallel_envs=num_parallel_envs,
+                                                            dataset_path=dataset_path,
+                                                            total_envs=total_envs,
+                                                            sim_agent_path="daphne-cornelisse/policy_S10_000_02_27",
+                                                            )
 
 
 
@@ -132,6 +138,10 @@ env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
 #############################################
 ################ SIMULATIONS ################
 #############################################
+
+### Save Moving Veh Info ###
+# |Save this info at the start since, GPUDrive segfaults when initialized on a CPU
+
 
 
 
@@ -157,12 +167,12 @@ if default_values is None:
                                                                                 observed_agents_count=observed_agents_count,
                                                                                 construal_size=construal_size,
                                                                                 num_parallel_envs=num_parallel_envs,
-                                                                                max_agents=max_agents,
+                                                                                max_agents=moving_veh_count,
                                                                                 sample_size=sample_size_utility,
                                                                                 device=device,
                                                                                 train_loader=train_loader,
                                                                                 env=env,
-                                                                                env_multi_agent=env_multi_agent,
+                                                                                moving_veh_masks=moving_veh_masks,
                                                                                 generate_animations=False)
     #3# |Save data
     savefl_path = simulation_results_path+processID+"_"+"construal_vals_"+str(datetime.now())+".pickle"
@@ -219,7 +229,7 @@ if scene_constr_dict is None:
         """
         sampled_construals = {}
         for scene_name, construal_info in heuristic_values.items():
-            construal_info.pop((0,))                # Do not sample empty construal
+            if (0,) in construal_info: construal_info.pop((0,))                # Do not sample empty construal
             full_construal_ = max(construal_info.keys(), key=len)
             construal_info.pop(full_construal_)     # Do not sample full state space
             constr_indices, constr_values = zip(*construal_info.items())
@@ -241,7 +251,7 @@ if scene_constr_dict is None:
 
 
 
-env.close(); env_multi_agent.close()
+env.close()
 
 # |Print the execution time
 execution_time = time.perf_counter() - start_time

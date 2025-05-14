@@ -45,13 +45,17 @@ from gpudrive.utils.config import load_config
 
 # |CoDec imports
 from examples.CoDec_Research.code.simulation.simulation_functions import simulate_policies, simulate_selected_construal_policies
-from examples.CoDec_Research.code.construals.construal_functions import get_construal_veh_distance_ego, get_construal_cardinality
+from examples.CoDec_Research.code.construals.construal_functions import get_construal_veh_distance_ego, get_construal_cardinality, \
+                                                                        get_construal_rel_heading_ego
 from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars
+from examples.CoDec_Research.code.config import get_active_config
 
 
 ##############################################
 ################### CONFIG ###################
 ##############################################
+
+pipelineConfig = get_active_config()
 
 # |Location to store simulation results
 out_dir = "examples/CoDec_Research/results/simulation_results/"
@@ -106,7 +110,7 @@ def generate_all_construal_trajnval(sim_agent: NeuralNet,
                                     device: str,
                                     train_loader: SceneDataLoader,
                                     env: GPUDriveConstrualEnv,
-                                    env_multi_agent: GPUDriveConstrualEnv,
+                                    moving_veh_masks: dict,
                                     generate_animations: bool = False,
                                     saveResults: bool = False,
                                     out_dir: str = None,
@@ -130,10 +134,11 @@ def generate_all_construal_trajnval(sim_agent: NeuralNet,
         env.swap_data_batch(batch)
 
         # |Get moving vehicle information
-        env_multi_agent.swap_data_batch(batch)
-        moving_veh_mask = env_multi_agent.cont_agent_mask
-        # moving_veh_indices = [tuple([i for i, val in enumerate(mask) if val]) for mask in moving_veh_mask]
-        moving_veh_indices = [tuple(torch.where(mask)[0].cpu().tolist()) for mask in moving_veh_mask]
+        curr_moving_veh_mask = torch.stack([scene_mask_ for scene_name_, scene_mask_ in moving_veh_masks.items() if scene_name_ in env.data_batch], dim=0)
+        moving_veh_indices = [torch.where(mask)[0].cpu().tolist() for mask in curr_moving_veh_mask]
+        if not pipelineConfig['ego_in_construal']:
+            [constr_indcs_.pop(0) for constr_indcs_ in moving_veh_indices]  # Remove ego from construals
+        moving_veh_indices = [tuple(constr_indcs_) for constr_indcs_ in moving_veh_indices] # Convert to immutable objects
         print("Indices of all moving vehicles (by scene): ", moving_veh_indices)
         control_mask = env.cont_agent_mask
 
@@ -193,7 +198,7 @@ def generate_selected_construal_traj(out_dir: str,
                                         device: str,
                                         train_loader: SceneDataLoader,
                                         env: GPUDriveConstrualEnv,
-                                        env_multi_agent: GPUDriveConstrualEnv,
+                                        moving_veh_masks: dict,
                                         selected_construals: Dict[str, List[Tuple[int]]],
                                         generate_animations: bool = False,
                                         ) -> None:
@@ -212,8 +217,9 @@ def generate_selected_construal_traj(out_dir: str,
         env.swap_data_batch(batch)
 
         # |Get moving vehicle information
-        env_multi_agent.swap_data_batch(batch)
-        moving_veh_indices = [tuple([i for i, val in enumerate(mask) if val]) for mask in env_multi_agent.cont_agent_mask]
+        curr_moving_veh_mask = torch.stack([scene_mask_ for scene_name_, scene_mask_ in moving_veh_masks.items() if scene_name_ in env.data_batch], dim=0)
+        moving_veh_indices = [torch.where(mask)[0].cpu().tolist() for mask in curr_moving_veh_mask]
+        # moving_veh_indices = [tuple([i for i, val in enumerate(mask) if val]) for mask in curr_moving_veh_mask]
         # print("Indices of all moving vehicles (by scene): ", moving_veh_indices)
         control_mask = env.cont_agent_mask
 
@@ -247,7 +253,7 @@ def generate_baseline_data( sim_agent: NeuralNet,
                             sample_size: int,
                             device: str,
                             env: GPUDriveConstrualEnv,
-                            env_multi_agent: GPUDriveConstrualEnv,
+                            moving_veh_masks: dict,
                             observed_agents_count: int = 0,
                             construal_size: int = 0,
                             selected_construals: Dict[str, List[Tuple[int]]] = None,
@@ -267,8 +273,12 @@ def generate_baseline_data( sim_agent: NeuralNet,
     curr_data_batch = [env_path2name(env_path_) for env_path_ in env.data_batch]
     
     #2# |Get moving vehicle information
-    moving_veh_mask = env_multi_agent.cont_agent_mask
-    moving_veh_indices = [tuple([i for i, val in enumerate(mask) if val]) for mask in moving_veh_mask]
+    curr_moving_veh_mask = torch.stack([scene_mask_ for scene_name_, scene_mask_ in moving_veh_masks.items() if scene_name_ in env.data_batch], dim=0)
+    moving_veh_indices = [torch.where(mask)[0].cpu().tolist() for mask in curr_moving_veh_mask]
+    if not pipelineConfig['ego_in_construal']:
+        [constr_indcs_.pop(0) for constr_indcs_ in moving_veh_indices]  # Remove ego from construals
+    moving_veh_indices = [tuple(constr_indcs_) for constr_indcs_ in moving_veh_indices] # Convert to immutable objects
+    # moving_veh_indices = [tuple([i for i, val in enumerate(mask) if val]) for mask in moving_veh_mask]
     # print("Indices of all moving vehicles (by scene): ", moving_veh_indices)
 
     #2# |Simulate on Construals
@@ -334,6 +344,7 @@ def get_constral_heurisrtic_values(env: GPUDriveConstrualEnv, train_loader: Scen
         The average distance or a list of distances from the ego vehicle to each vehicle in the construal
     '''
     heuristics_to_func = {"ego_distance": get_construal_veh_distance_ego,
+                          "rel_heading": get_construal_rel_heading_ego,
                           "cardinality": get_construal_cardinality,}
     active_heuristics = {heuristics_to_func[curr_heuristic_]: curr_heuristic_val_
                             for curr_heuristic_, curr_heuristic_val_ in heuristic_params.items()}
@@ -387,7 +398,7 @@ def get_constral_heurisrtic_values(env: GPUDriveConstrualEnv, train_loader: Scen
 if __name__ == "__main__":
     start_time = time.perf_counter()
 
-    env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
+    env_config, train_loader, env, sim_agent = get_gpuDrive_vars(
                                                                                 training_config = training_config,
                                                                                 device = device,
                                                                                 num_parallel_envs = num_parallel_envs,
@@ -410,7 +421,7 @@ if __name__ == "__main__":
                                 device=device,
                                 train_loader=train_loader,
                                 env=env,
-                                env_multi_agent=env_multi_agent,
+                                moving_veh_masks={},
                                 generate_animations=False)
     
     # results = generate_baseline_data(out_dir=out_dir,
