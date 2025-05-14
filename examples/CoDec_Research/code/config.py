@@ -3,7 +3,7 @@ import numpy as np
 
 
 def get_active_config():
-    return local_config
+    return server_config
 
 
 
