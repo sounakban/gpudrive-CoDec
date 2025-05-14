@@ -212,6 +212,7 @@ def simulate_policies(env: GPUDriveConstrualEnv,
     all_obs = {env_name: {} for env_name in curr_data_batch}                        # Dictionary that contains the observations (agent trajectories) for each construal
     state_action_pairs = {env_name: {} for env_name in curr_data_batch}             # Dictionary that contains all states and corresponding action distributions
     construal_values = {env_name: {} for env_name in curr_data_batch}               # Dictionary that contains the expected utility per construal
+    frames = {}
 
     # Compute the number of loops
     if selected_construals is None:
@@ -243,11 +244,25 @@ def simulate_policies(env: GPUDriveConstrualEnv,
             
             construal_info, construal_done = zip(*construal_info)
             mask_indices, construal_masks = zip(*construal_info)   # Unzip construal masks
-            #3# |Create empty dictionaries to store information
+            
             for scene_num, scene_name in enumerate(curr_data_batch):
-                all_obs[scene_name][mask_indices[scene_num]] = {sample_num_: None for sample_num_ in range(sample_size)}
-                state_action_pairs[scene_name][mask_indices[scene_num]] = {sample_num_: [] for sample_num_ in range(sample_size)}                
-                frames = {f"env_{scene_name}-constr_{const_num}-sample_{sample_num_}": [] for sample_num_ in range(sample_size)}
+                if mask_indices[scene_num] in all_obs[scene_name]:
+                    #3# | If these construals were encountered before, when sampling with replacement.
+                    #       Shift previous data by sample size
+                    curr_tot_samples = max(all_obs[scene_name][mask_indices[scene_num]].keys()) + 1
+                    for sample_num_ in reversed(range(curr_tot_samples)):
+                        all_obs[scene_name][mask_indices[scene_num]][sample_num_+sample_size] = \
+                            all_obs[scene_name][mask_indices[scene_num]][sample_num_]
+                        all_obs[scene_name][mask_indices[scene_num]][sample_num_] = None
+                        state_action_pairs[scene_name][mask_indices[scene_num]][sample_num_+sample_size] = \
+                            state_action_pairs[scene_name][mask_indices[scene_num]][sample_num_]
+                        state_action_pairs[scene_name][mask_indices[scene_num]][sample_num_] = []
+                        frames[f"env_{scene_name}-constr_{const_num}-sample_{sample_num_}"] = []
+                else:
+                    #3# |Otherwise, create empty dictionaries to store information
+                    all_obs[scene_name][mask_indices[scene_num]] = {sample_num_: None for sample_num_ in range(sample_size)}
+                    state_action_pairs[scene_name][mask_indices[scene_num]] = {sample_num_: [] for sample_num_ in range(sample_size)}                
+                    frames.update({f"env_{scene_name}-constr_{const_num}-sample_{sample_num_}": [] for sample_num_ in range(sample_size)})
         else:
             #2# |IF only simulating generalist policy
             construal_masks = None
@@ -256,7 +271,7 @@ def simulate_policies(env: GPUDriveConstrualEnv,
             for scene_num, scene_name in enumerate(curr_data_batch):
                 all_obs[scene_name][moving_veh_indices[scene_num]] = {sample_num_: None for sample_num_ in range(sample_size)}
                 state_action_pairs[scene_name][moving_veh_indices[scene_num]] = {sample_num_: [] for sample_num_ in range(sample_size)}                
-                frames = {f"env_{scene_name}-sample_{sample_num_}": [] for sample_num_ in range(sample_size)}
+                frames.update({f"env_{scene_name}-sample_{sample_num_}": [] for sample_num_ in range(sample_size)})
         
         curr_sample_rewards = []   # Keep track of rewards
         for sample_num in range(sample_size):

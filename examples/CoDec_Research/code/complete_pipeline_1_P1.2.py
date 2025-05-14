@@ -47,7 +47,7 @@ from gpudrive.utils.config import load_config
 from examples.CoDec_Research.code.simulation.construal_main import generate_baseline_data, generate_selected_construal_traj, \
                                                                     get_constral_heurisrtic_values, generate_all_construal_trajnval
 from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars, save_pickle
-from examples.CoDec_Research.code.config import active_config
+from examples.CoDec_Research.code.config import get_active_config
 
 
 # Function to extract filename from path
@@ -61,7 +61,7 @@ start_time = time.perf_counter()
 ################ SET EXP PARAMETERS ################
 ####################################################
 
-curr_config = active_config
+curr_config = get_active_config()
 
 # Parameters for Inference
 heuristic_params = {"ego_distance": 0.5, "cardinality": 1}              # Hueristics and their weight parameters (to be inferred)

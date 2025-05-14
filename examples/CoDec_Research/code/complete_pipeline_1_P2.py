@@ -46,7 +46,7 @@ from examples.CoDec_Research.code.simulation.construal_main import generate_base
                                                                     get_constral_heurisrtic_values, generate_all_construal_trajnval
 from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars, save_pickle
 from examples.CoDec_Research.code.analysis.evaluate_construal_actions import evaluate_construals, get_best_construals_likelihood
-from examples.CoDec_Research.code.config import active_config
+from examples.CoDec_Research.code.config import get_active_config, ego_dis_param_values
 
 
 # Function to extract filename from path
@@ -60,7 +60,7 @@ start_time = time.perf_counter()
 ################ SET EXP PARAMETERS ################
 ####################################################
 
-curr_config = active_config
+curr_config = get_active_config()
 
 # Parameters for Inference
 heuristic_params = {"ego_distance": 0.5, "cardinality": 1}              # Hueristics and their weight parameters (to be inferred)
@@ -106,6 +106,7 @@ env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
                                                                                 max_agents=max_agents,
                                                                                 total_envs=total_envs,
                                                                                 sim_agent_path="daphne-cornelisse/policy_S10_000_02_27",
+                                                                                env_multi_agent="Placeholder to prevent initialization"
                                                                         )
 
 
@@ -224,7 +225,7 @@ get_constral_heurisrtic_values_partial = partial(get_constral_heurisrtic_values,
                                                  train_loader=train_loader, default_values=default_values)
 p_lambda = {}
 curr_heuristic_params = deepcopy(heuristic_params)
-for curr_lambda in np.linspace(0,1,11):
+for curr_lambda in ego_dis_param_values:
     curr_lambda = curr_lambda.item()
     curr_heuristic_params["ego_distance"] = curr_lambda
     curr_heuristic_values = get_constral_heurisrtic_values_partial(heuristic_params=curr_heuristic_params)
@@ -239,7 +240,6 @@ for curr_lambda in np.linspace(0,1,11):
                 curr_p_lambda = []
                 for test_construal, test_construal_info in traj_sample_info.items():
                     construal_heur_value = curr_heuristic_values[scene_name][test_construal]
-                    # p_a = torch.exp( -1*test_construal_info['log_likelihood'].type(torch.float64) ).item()
                     p_a = test_construal_info['likelihood'].item()
                     curr_p_lambda.append(p_a*construal_heur_value)
                 p_lambda[curr_lambda][scene_name][base_construal].append( torch.log(torch.sum(torch.tensor(curr_p_lambda, dtype=torch.float64))) )

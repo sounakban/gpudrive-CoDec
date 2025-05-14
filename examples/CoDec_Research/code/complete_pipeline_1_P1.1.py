@@ -47,7 +47,7 @@ from gpudrive.utils.config import load_config
 from examples.CoDec_Research.code.simulation.construal_main import generate_baseline_data, generate_selected_construal_traj, \
                                                                     get_constral_heurisrtic_values, generate_all_construal_trajnval
 from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars, save_pickle
-from examples.CoDec_Research.code.config import active_config
+from examples.CoDec_Research.code.config import get_active_config, ego_dis_param_values
 
 
 # Function to extract filename from path
@@ -61,10 +61,10 @@ start_time = time.perf_counter()
 ################ SET EXP PARAMETERS ################
 ####################################################
 
-curr_config = active_config
+curr_config = get_active_config()
 
 # Parameters for Inference
-heuristic_params = {"ego_distance": 0.5, "cardinality": 1}              # Hueristics and their weight parameters (to be inferred)
+heuristic_params = {"ego_distance": ego_dis_param_values[5], "cardinality": 1}              # Hueristics and their weight parameters (to be inferred)
 
 construal_count_baseline = curr_config['construal_count_baseline']      # Number of construals to sample for baseline data generation
 trajectory_count_baseline = curr_config['trajectory_count_baseline']    # Number of baseline trajectories to generate per construal
@@ -219,6 +219,9 @@ if scene_constr_dict is None:
         """
         sampled_construals = {}
         for scene_name, construal_info in heuristic_values.items():
+            construal_info.pop((0,))                # Do not sample empty construal
+            full_construal_ = max(construal_info.keys(), key=len)
+            construal_info.pop(full_construal_)     # Do not sample full state space
             constr_indices, constr_values = zip(*construal_info.items())
             sampled_indices = torch.multinomial(torch.tensor(constr_values), num_samples=sample_count, \
                                                     replacement=True).tolist()
