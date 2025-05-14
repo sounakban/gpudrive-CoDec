@@ -3,12 +3,12 @@ import numpy as np
 
 
 def get_active_config():
-    return server_config
+    return local_config
 
 
 
 ego_dis_param_values = np.linspace(0,10,11)
-ego_head_param_values = np.linspace(0,10,11)
+ego_head_param_values = np.linspace(0,20,21)
 
 # Preset parameters for Inference
 heuristic_params = {"ego_distance": ego_dis_param_values[5],            # Hueristics and their weight parameters (to be inferred)

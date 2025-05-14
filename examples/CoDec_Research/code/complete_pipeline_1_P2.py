@@ -228,17 +228,18 @@ if default_values is None:
 
 
 # |Get probability of lambda values
+target_param = "rel_heading"
 get_constral_heurisrtic_values_partial = partial(get_constral_heurisrtic_values, env=env, 
                                                  train_loader=train_loader, default_values=default_values)
 p_lambda = {}
 curr_heuristic_params = deepcopy(heuristic_params)
-for curr_lambda in ego_dis_param_values:
+target_param_values = ego_head_param_values if target_param == "rel_heading" else ego_dis_param_values
+for curr_lambda in target_param_values:
     curr_lambda = curr_lambda.item()
-    # curr_heuristic_params["ego_distance"] = curr_lambda
-    curr_heuristic_params["rel_heading"] = curr_lambda
+    curr_heuristic_params[target_param] = curr_lambda
     curr_heuristic_values = get_constral_heurisrtic_values_partial(heuristic_params=curr_heuristic_params)
     p_lambda[curr_lambda] = {}
-    pprint(curr_heuristic_values)
+    # pprint.pprint(curr_heuristic_values)
 
     for scene_name, sampled_construals in construal_action_likelihoods.items():
         p_lambda[curr_lambda][scene_name] = {}
