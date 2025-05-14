@@ -1,7 +1,7 @@
 import numpy as np
 
 def get_active_config():
-    return local_config
+    return server_config
 
 
 ego_dis_param_values = np.linspace(0,10,11)
