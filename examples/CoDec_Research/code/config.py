@@ -1,11 +1,21 @@
 import numpy as np
 
+
+
 def get_active_config():
-    return server_config
+    return local_config
+
 
 
 ego_dis_param_values = np.linspace(0,10,11)
 ego_head_param_values = np.linspace(0,10,11)
+
+# Preset parameters for Inference
+heuristic_params = {"ego_distance": ego_dis_param_values[5],            # Hueristics and their weight parameters (to be inferred)
+                    "rel_heading": ego_head_param_values[5],
+                    "cardinality": 1}
+
+
 
 local_config = {
                 'dataset_path': 'data/processed/construal/Set3/',         # Path to scenario files
@@ -51,6 +61,3 @@ server_config = {
                 'ego_in_construal': False                                 # Boolean flag indicating whether to keep ego in construals. 
                                                                           #     Ego is observed anyway
                 }
-
-
-

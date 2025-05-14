@@ -22,6 +22,8 @@ import time
 import torch
 import dataclasses
 
+import pprint
+
 
 # |Set root for GPUDrive import
 import os
@@ -46,7 +48,7 @@ from examples.CoDec_Research.code.simulation.construal_main import generate_base
                                                                     get_constral_heurisrtic_values, generate_all_construal_trajnval
 from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars, get_mov_veh_masks, save_pickle
 from examples.CoDec_Research.code.analysis.evaluate_construal_actions import evaluate_construals, get_best_construals_likelihood
-from examples.CoDec_Research.code.config import get_active_config, ego_dis_param_values
+from examples.CoDec_Research.code.config import get_active_config, ego_dis_param_values, ego_head_param_values, heuristic_params
 
 
 # Function to extract filename from path
@@ -61,9 +63,6 @@ start_time = time.perf_counter()
 ####################################################
 
 curr_config = get_active_config()
-
-# Parameters for Inference
-heuristic_params = {"ego_distance": 0.5, "cardinality": 1}              # Hueristics and their weight parameters (to be inferred)
 
 construal_count_baseline = curr_config['construal_count_baseline']      # Number of construals to sample for baseline data generation
 trajectory_count_baseline = curr_config['trajectory_count_baseline']    # Number of baseline trajectories to generate per construal
@@ -157,6 +156,7 @@ if construal_action_likelihoods is None:
             #2# |Ensure the correct file is being loaded
             fileParams = state_action_pairs.pop("params")
             state_action_pairs.pop('dict_structure')
+            print(fileParams)
             if set(state_action_pairs.keys()).issubset(set(curr_data_batch)) and fileParams == heuristic_params:
                 print(f"Using synthetic baseline data from file: {srFile}")
                 construal_action_likelihoods.update(evaluate_construals(state_action_pairs, construal_size, sim_agent, device=device))
@@ -238,6 +238,7 @@ for curr_lambda in ego_dis_param_values:
     curr_heuristic_params["rel_heading"] = curr_lambda
     curr_heuristic_values = get_constral_heurisrtic_values_partial(heuristic_params=curr_heuristic_params)
     p_lambda[curr_lambda] = {}
+    pprint(curr_heuristic_values)
 
     for scene_name, sampled_construals in construal_action_likelihoods.items():
         p_lambda[curr_lambda][scene_name] = {}
