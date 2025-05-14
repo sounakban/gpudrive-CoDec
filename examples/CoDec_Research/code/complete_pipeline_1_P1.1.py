@@ -138,6 +138,7 @@ env_config, train_loader, env, env_multi_agent, sim_agent = get_gpuDrive_vars(
 
 ### Compute construal  utilities through simulator sampling ###
 default_values = None
+traj_obs = None
 
 #2# |Check if saved construal utility data is available
 for srFile in simulation_results_files:
@@ -173,6 +174,22 @@ if default_values is None:
     #3# Free up memory
     del traj_obs, ground_truth
 
+
+
+discounted_rewards = False
+if discounted_rewards:
+    if traj_obs is None:
+        for srFile in simulation_results_files:
+            if "constr_traj_obs_" in srFile:
+                with open(srFile, 'rb') as opn_file:
+                    traj_obs = pickle.load(opn_file)
+                #2# |Ensure the correct file is being loaded
+                if all(env_path2name(scene_path_) in traj_obs.keys() for scene_path_ in train_loader.dataset):
+                    print(f"Using construal values from file: {srFile}")
+                    break
+                else:
+                    traj_obs = None
+    # default_values = default_to_discounted(default_values, traj_obs)
 
 
 

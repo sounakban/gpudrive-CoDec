@@ -141,11 +141,11 @@ for srFile in simulation_results_files:
             construal_action_likelihoods = None
 
 # Loop through multiple synthetic data files which (combined) contains data for all current scenes
-print("Could not find saved likelihood estimations for this dataset, not computing.")
+print("Could not find saved likelihood estimations for this dataset, now computing.")
 if construal_action_likelihoods is None:
     construal_action_likelihoods = {}
     for srFile in simulation_results_files:
-        if "baseline_state_action_pairs_" in srFile:
+        if "baseline_state_action_pairs" in srFile:
             with open(srFile, 'rb') as opn_file:
                 state_action_pairs = pickle.load(opn_file)
             #2# |Ensure the correct file is being loaded
