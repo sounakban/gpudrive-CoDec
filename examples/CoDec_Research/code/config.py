@@ -55,7 +55,7 @@ server_config = {
                 'num_parallel_envs_light': 5,                             # Number of parallel environments for memory intensive operations
                 'total_envs': 10,
                 'device': "'cuda' if torch.cuda.is_available() else 'cpu'",
-                'sample_size_utility': 1,                                # Number of samples to compute expected utility of a construal
+                'sample_size_utility': 10,                                # Number of samples to compute expected utility of a construal
                 'construal_count_baseline': 8,                            # Number of construals to sample for baseline data generation
                 'trajectory_count_baseline': 1,                           # Number of baseline trajectories to generate per construal
                 'ego_in_construal': False                                 # Boolean flag indicating whether to keep ego in construals. 
