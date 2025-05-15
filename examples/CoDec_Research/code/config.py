@@ -12,7 +12,7 @@ ego_head_param_values = np.linspace(0,20,21)
 
 # Preset parameters for Inference
 heuristic_params = {"ego_distance": ego_dis_param_values[5],            # Hueristics and their weight parameters (to be inferred)
-                    "rel_heading": ego_head_param_values[13],
+                    "rel_heading": ego_head_param_values[8],
                     "cardinality": 1}
 
 
