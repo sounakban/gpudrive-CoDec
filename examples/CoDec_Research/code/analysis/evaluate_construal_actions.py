@@ -13,8 +13,6 @@ import os
 import sys
 from pathlib import Path
 
-from zmq import device
-
 # |Set working directory to the base directory 'gpudrive'
 working_dir = Path.cwd()
 while working_dir.name != 'gpudrive-CoDec':

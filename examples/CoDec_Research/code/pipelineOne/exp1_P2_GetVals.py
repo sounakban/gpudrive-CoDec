@@ -4,35 +4,11 @@
     (given some parameters), and samples construals based on computed values, 
 """
 
-from copy import deepcopy
-from functools import cache
-from os import listdir
-import json
-import pickle
-import gc
-from datetime import datetime
-from functools import partial
-
-from scipy.special import softmax
-import numpy as np
-import math
-from itertools import combinations
-
-from typing import Any, List, Tuple
-import time
-
-import torch
-import dataclasses
-
-
-# |Set root for GPUDrive import
+# |Set parent to current working directory for imports
 import os
 import sys
 from pathlib import Path
 
-from traitlets import default
-
-# Set working directory to the base directory 'gpudrive'
 working_dir = Path.cwd()
 while working_dir.name != 'gpudrive-CoDec':
     working_dir = working_dir.parent
@@ -41,68 +17,18 @@ while working_dir.name != 'gpudrive-CoDec':
 os.chdir(working_dir)
 sys.path.append(str(working_dir))
 
-
-# |GPUDrive imports
-from gpudrive.utils.config import load_config
-from examples.CoDec_Research.code.simulation.construal_main import generate_baseline_data, generate_selected_construal_traj, \
-                                                                    get_constral_heurisrtic_values, generate_all_construal_trajnval
-from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars, get_mov_veh_masks, save_pickle
-from examples.CoDec_Research.code.config import get_active_config, heuristic_params
-
-
-# Function to extract filename from path
-env_path2name = lambda path: path.split("/")[-1].split(".")[0]
-
+# |Import everything
+from examples.CoDec_Research.code.pipelineOne.pipe1_imports import *
 
 # |START TIMER
 start_time = time.perf_counter()
 
-####################################################
-################ SET EXP PARAMETERS ################
-####################################################
-
-curr_config = get_active_config()
-
-construal_count_baseline = curr_config['construal_count_baseline']      # Number of construals to sample for baseline data generation
-trajectory_count_baseline = curr_config['trajectory_count_baseline']    # Number of baseline trajectories to generate per construal
 
 
-### Specify Environment Configuration ###
 
-# |Location to store (and retrieve pre-computed) simulation results
-simulation_results_path = curr_config["simulation_results_path"]
-simulation_results_files = [simulation_results_path+fl_name for fl_name in listdir(simulation_results_path)]
-
-# |Model Config (on which model was trained)
-training_config = load_config("examples/experimental/config/reliable_agents_params")
-
-# |Set scenario path
-dataset_path = curr_config['dataset_path']
-processID = dataset_path.split('/')[-2]                 # Used for storing and retrieving relevant data
-
-# |Set simulator config
-moving_veh_count = training_config.max_controlled_agents      # Get total vehicle count
-num_parallel_envs = curr_config['num_parallel_envs']
-total_envs = curr_config['total_envs']
-device = eval(curr_config['device'])
-
-# |Set construal config
-construal_size = curr_config['construal_size']
-observed_agents_count = moving_veh_count - 1                              # Agents observed except self (used for vector sizes)
-sample_size_utility = curr_config['sample_size_utility']            # Number of samples to compute expected utility of a construal
-
-# |Other changes to variables
-training_config.max_controlled_agents = 1                           # Control only the first vehicle in the environment
-total_envs = min(total_envs, len(listdir(dataset_path)))
-
-moving_veh_masks = get_mov_veh_masks(
-                                    training_config=training_config, 
-                                    device=device, 
-                                    dataset_path=dataset_path,
-                                    max_agents=moving_veh_count,
-                                    result_file_loc=simulation_results_path,
-                                    processID=processID
-                                    )
+#####################################################
+################ SET UP ENVIRONMENTS ################
+#####################################################
 
 env_config, train_loader, env, sim_agent = get_gpuDrive_vars(
                                                             training_config=training_config,
@@ -114,32 +40,9 @@ env_config, train_loader, env, sim_agent = get_gpuDrive_vars(
                                                             )
 
 
-
-# TODO (Post NeurIPS): Optimize code
-# 1. Reduce redunduncy in baseline data (use data-class to save data)
-# 2. Convert for loops to list comprihension in env_torch.py: function get_structured_observation
-# 3. Optimiza run_policy function
-# 4. We might have to re-evaluate our measure of construal utilities or use other data
-#   --- This is great for inferring discrete values of one parameter 
-#   --- We might need more expressive utility values as our problem becomes more complex
-#   --- I was thinking if we could train an attentional network alongside the PPO agent, which could 
-#       provide behavioral utilities of various objects in the environment, and could be used to 
-#       estimate the behavioral utility of various construals.
-#   --- Or any construal, containing vehicles whith whom the trajectories of the ego vehicle
-#       intersect in the next n-seconds (can be justified by the fact that experts often 
-#       make decisions based on forward simulations)
-
-
-
 #############################################
 ################ SIMULATIONS ################
 #############################################
-
-### Save Moving Veh Info ###
-# |Save this info at the start since, GPUDrive segfaults when initialized on a CPU
-
-
-
 
 
 ### Compute construal  utilities through simulator sampling ###
@@ -169,7 +72,8 @@ if default_values is None:
                                                                                 train_loader=train_loader,
                                                                                 env=env,
                                                                                 moving_veh_masks=moving_veh_masks,
-                                                                                generate_animations=False)
+                                                                                generate_animations=False,
+                                                                                expConfig=curr_config)
     #3# |Save data
     savefl_path = simulation_results_path+processID+"_"+"construal_vals_"+str(datetime.now())+".pickle"
     save_pickle(savefl_path, default_values, "Construal value")

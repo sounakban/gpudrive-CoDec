@@ -1,53 +1,10 @@
-# |Default library imports
-from copy import deepcopy
-from functools import cache
-import json
 
-from pydantic import constr
-from scipy.special import softmax
-import numpy as np
-import math
-from itertools import combinations
-
-from typing import Any, Dict, List, Tuple
-
-from sympy import parallel_poly_from_expr
-from torch.distributions.utils import logits_to_probs
-
-
-# |Set root for GPUDrive import
-import os
-import sys
-from pathlib import Path
-
-## |Set working directory to the base directory 'gpudrive'
-working_dir = Path.cwd()
-while working_dir.name != 'gpudrive-CoDec':
-    working_dir = working_dir.parent
-    if working_dir == Path.home():
-        raise FileNotFoundError("Base directory 'gpudrive' not found")
-os.chdir(working_dir)
-sys.path.append(str(working_dir))
+# |Higher-level imports
+from examples.CoDec_Research.code.simulation.simulation_imports import *
 
 # |Local imports
-from examples.CoDec_Research.code.construals.construal_functions import get_construal_byIndex, get_construal_count, \
-                                                                get_construals, get_selected_construal_byIndex
+from examples.CoDec_Research.code.construals.construal_functions import *
 from examples.CoDec_Research.code.analysis.evaluate_construal_actions import process_state
-
-# |GPUDrive imports
-import torch
-import mediapy
-from gpudrive.networks.late_fusion import NeuralNet
-
-from gpudrive.env.env_torch import GPUDriveConstrualEnv, GPUDriveTorchEnv
-from gpudrive.visualize.utils import img_from_fig
-
-
-
-
-
-# Function to extract filename from path
-env_path2name = lambda path: path.split("/")[-1].split(".")[0]
 
 
 
@@ -108,7 +65,7 @@ def run_policy(env: GPUDriveTorchEnv,
                generate_animations: bool = False,
                ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, Any]:
     # |Predict actions
-    action, _, _, _, action_probs = sim_agent(next_obs[control_mask], deterministic=False)
+    action, _, _, _, action_logits = sim_agent(next_obs[control_mask], deterministic=False)
 
     action_template = torch.zeros(
         (total_envs, max_agents), dtype=torch.int64, device=device
@@ -157,7 +114,7 @@ def run_policy(env: GPUDriveTorchEnv,
     # print("Action probabilities match?: ", (tmp_action_probs_== action_probs).all())
     # print("Action match?: ", torch.max(torch.abs(logits_to_probs(tmp_action_probs_) - logits_to_probs(action_probs))))
 
-    return next_obs, reward, done, info, plottable_obs, action_probs
+    return next_obs, reward, done, info, plottable_obs, action_logits
 
 
 
@@ -287,7 +244,7 @@ def simulate_policies(env: GPUDriveConstrualEnv,
                 raw_obs = env.get_obs(raw_obs=True)
 
                 #3# |Execute policy
-                next_obs, reward, done, info, plottable_obs, action_probs = run_policy( env=env,
+                next_obs, reward, done, info, plottable_obs, action_logits = run_policy( env=env,
                                                                                         sim_agent=sim_agent,
                                                                                         next_obs=next_obs,
                                                                                         control_mask=control_mask,
@@ -304,7 +261,7 @@ def simulate_policies(env: GPUDriveConstrualEnv,
 
                 #3# |Record state-action pairs
                 if save_state_action_pairs:
-                    for scene_num, action_dist in enumerate(action_probs):
+                    for scene_num, action_dist in enumerate(action_logits):
                         scene_name = curr_data_batch[scene_num]
                         if const_num == -1:
                             # |Generalist policy
@@ -444,7 +401,7 @@ def simulate_selected_construal_policies(env: GPUDriveConstrualEnv,
                 print(f"\r\t\tStep: {time_step+1}", end="", flush=True)
 
                 #3# |Execute policy
-                next_obs, reward, done, info, plottable_obs, action_probs = run_policy( env=env,
+                next_obs, reward, done, info, plottable_obs, action_logits = run_policy( env=env,
                                                                                         sim_agent=sim_agent,
                                                                                         next_obs=next_obs,
                                                                                         control_mask=control_mask,

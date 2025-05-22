@@ -3,17 +3,23 @@ import numpy as np
 
 
 def get_active_config():
-    return server_config
+    return local_config
 
 
 
 ego_dis_param_values = np.linspace(0,10,11)
-ego_head_param_values = np.linspace(0,20,21)
+ego_head_param_values = np.linspace(-15,15,31)
 
 # Preset parameters for Inference
-heuristic_params = {"ego_distance": ego_dis_param_values[5],            # Hueristics and their weight parameters (to be inferred)
-                    "rel_heading": ego_head_param_values[8],
-                    "cardinality": 1}
+# heuristic_params = {"ego_distance": ego_dis_param_values[5],            # Hueristics and their weight parameters (to be inferred)
+#                     "rel_heading": ego_head_param_values[1],
+#                     "cardinality": 1}
+
+# Preset parameters for Inference
+heuristic_params = {                                                    # Hueristics and their weight parameters (to be inferred)
+                    "rel_heading": ego_head_param_values[15],
+                    "cardinality": 2
+                    }
 
 
 
@@ -33,15 +39,15 @@ local_config = {
                 }
 
 local_config_2= {# |run inference on baseline data already generated on the server
-                'dataset_path': 'data/processed/construal/Set1V/',         # Path to scenario files
-                'simulation_results_path': '/mnt/d/Data/',
+                'dataset_path': 'data/processed/construal/Set1V2/',         # Path to scenario files
+                'simulation_results_path': 'examples/CoDec_Research/results/simulation_results/',
                 'construal_size': 1,
                 'num_parallel_envs': 10,
                 'num_parallel_envs_light': 2,                             # NUmber of parallel environments for memory intensive operations
                 'total_envs': 10,
                 'device': "'cpu'",
                 'sample_size_utility': 1,                                 # Number of samples to compute expected utility of a construal
-                'construal_count_baseline': 8,                            # Number of construals to sample for baseline data generation
+                'construal_count_baseline': 6,                            # Number of construals to sample for baseline data generation
                 'trajectory_count_baseline': 1,                           # Number of baseline trajectories to generate per construal
                 'ego_in_construal': False                                 # Boolean flag indicating whether to keep ego in construals. 
                                                                           #     Ego is observed anyway
@@ -61,3 +67,11 @@ server_config = {
                 'ego_in_construal': False                                 # Boolean flag indicating whether to keep ego in construals. 
                                                                           #     Ego is observed anyway
                 }
+
+
+# shared_config = {
+#                     save_intermediate_files = False,     # If set to False, files apart from construal values and final results are not 
+#                                                         # saved. If True, everything is saved
+#                     save_
+
+# }

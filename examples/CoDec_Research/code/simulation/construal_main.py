@@ -1,91 +1,13 @@
-# |Default library imports
-from copy import deepcopy
-from functools import cache
-from locale import normalize
-from os import listdir
-import json
-import pickle
-from datetime import datetime
+"""
 
-from scipy.special import softmax
-import numpy as np
-import math
-from itertools import combinations
+"""
 
-from typing import Any, Dict, List, Tuple
-import time
+# |Higher-level imports
+from examples.CoDec_Research.code.simulation.simulation_imports import *
 
-import torch
-import dataclasses
-from tqdm import tqdm
-
-
-# |Set root for GPUDrive import
-import os
-import sys
-from pathlib import Path
-
-## |Set working directory to the base directory 'gpudrive'
-working_dir = Path.cwd()
-while working_dir.name != 'gpudrive-CoDec':
-    working_dir = working_dir.parent
-    if working_dir == Path.home():
-        raise FileNotFoundError("Base directory 'gpudrive' not found")
-os.chdir(working_dir)
-sys.path.append(str(working_dir))
-
-
-# |GPUDrive imports
-from gpudrive.networks.late_fusion import NeuralNet
-from gpudrive.env.config import EnvConfig
-from gpudrive.env.env_torch import GPUDriveTorchEnv, GPUDriveConstrualEnv
-from gpudrive.visualize.utils import img_from_fig
-from gpudrive.env.dataset import SceneDataLoader
-from gpudrive.utils.config import load_config
-
-# |CoDec imports
-from examples.CoDec_Research.code.simulation.simulation_functions import simulate_policies, simulate_selected_construal_policies
-from examples.CoDec_Research.code.construals.construal_functions import get_construal_veh_distance_ego, get_construal_cardinality, \
-                                                                        get_construal_rel_heading_ego
-from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars
-from examples.CoDec_Research.code.config import get_active_config
-
-
-##############################################
-################### CONFIG ###################
-##############################################
-
-pipelineConfig = get_active_config()
-
-# |Location to store simulation results
-out_dir = "examples/CoDec_Research/results/simulation_results/"
-
-# |Model Config (on which model was trained)
-training_config = load_config("examples/experimental/config/reliable_agents_params")
-# print(config)
-
-# |Set scenario path
-# dataset_path='data/processed/examples'
-# dataset_path='data/processed/training'
-dataset_path = 'data/processed/construal'
-
-# |Set simulator config
-max_agents = training_config.max_controlled_agents   # Get total vehicle count
-num_parallel_envs = 2
-total_envs = 2
-device = "cpu" # cpu just because we're in a notebook
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# |Set construal config
-construal_size = 1
-observed_agents_count = max_agents - 1      # Agents observed except self (used for vector sizes)
-sample_size = 2                            # Number of samples to calculate expected utility of a construal
-
-# |Other changes to variables
-training_config.max_controlled_agents = 1    # Control only the first vehicle in the environment
-total_envs = min(total_envs, len(listdir(dataset_path)))
-
-
+# |Same-level imports
+from examples.CoDec_Research.code.simulation.simulation_functions import *
+from examples.CoDec_Research.code.construals.construal_functions import *
 
 
 
@@ -96,8 +18,8 @@ total_envs = min(total_envs, len(listdir(dataset_path)))
 
 
 
-# Function to extract filename from path
-env_path2name = lambda path: path.split("/")[-1].split(".")[0]
+# # Function to extract filename from path
+# env_path2name = lambda path: path.split("/")[-1].split(".")[0]
 
 
 
@@ -114,6 +36,7 @@ def generate_all_construal_trajnval(sim_agent: NeuralNet,
                                     generate_animations: bool = False,
                                     saveResults: bool = False,
                                     out_dir: str = None,
+                                    expConfig: dict = None
                                     ) -> None:
     """
     Generate values and trajectory observations for construed agent states
@@ -136,7 +59,7 @@ def generate_all_construal_trajnval(sim_agent: NeuralNet,
         # |Get moving vehicle information
         curr_moving_veh_mask = torch.stack([scene_mask_ for scene_name_, scene_mask_ in moving_veh_masks.items() if scene_name_ in env.data_batch], dim=0)
         moving_veh_indices = [torch.where(mask)[0].cpu().tolist() for mask in curr_moving_veh_mask]
-        if not pipelineConfig['ego_in_construal']:
+        if not expConfig['ego_in_construal']:
             [constr_indcs_.pop(0) for constr_indcs_ in moving_veh_indices]  # Remove ego from construals
         moving_veh_indices = [tuple(constr_indcs_) for constr_indcs_ in moving_veh_indices] # Convert to immutable objects
         print("Indices of all moving vehicles (by scene): ", moving_veh_indices)
@@ -260,6 +183,7 @@ def generate_baseline_data( sim_agent: NeuralNet,
                             generate_animations: bool = False,
                             saveResults: bool = False,
                             out_dir: str = None,
+                            expConfig: dict = None,
                             ) -> None:
     """
     Generate baseline state representation and action probability pairs
@@ -275,7 +199,7 @@ def generate_baseline_data( sim_agent: NeuralNet,
     #2# |Get moving vehicle information
     curr_moving_veh_mask = torch.stack([scene_mask_ for scene_name_, scene_mask_ in moving_veh_masks.items() if scene_name_ in env.data_batch], dim=0)
     moving_veh_indices = [torch.where(mask)[0].cpu().tolist() for mask in curr_moving_veh_mask]
-    if not pipelineConfig['ego_in_construal']:
+    if not expConfig['ego_in_construal']:
         [constr_indcs_.pop(0) for constr_indcs_ in moving_veh_indices]  # Remove ego from construals
     moving_veh_indices = [tuple(constr_indcs_) for constr_indcs_ in moving_veh_indices] # Convert to immutable objects
     # moving_veh_indices = [tuple([i for i, val in enumerate(mask) if val]) for mask in moving_veh_mask]
@@ -396,6 +320,7 @@ def get_constral_heurisrtic_values(env: GPUDriveConstrualEnv, train_loader: Scen
 #################################################
     
 if __name__ == "__main__":
+
     start_time = time.perf_counter()
 
     env_config, train_loader, env, sim_agent = get_gpuDrive_vars(

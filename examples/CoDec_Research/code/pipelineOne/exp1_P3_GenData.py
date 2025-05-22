@@ -3,36 +3,12 @@
     data based on sampled construals (previous stage of pipeline).
 """
 
-from copy import deepcopy
-from functools import cache
-from os import listdir
-import json
-import pickle
-import gc
-from datetime import datetime
-from functools import partial
 
-from scipy.special import softmax
-import numpy as np
-import math
-from itertools import combinations
-
-from typing import Any, List, Tuple
-import time
-
-import torch
-import dataclasses
-from tqdm import tqdm
-
-
-# |Set root for GPUDrive import
+# |Set parent to current working directory for imports
 import os
 import sys
 from pathlib import Path
 
-from traitlets import default
-
-# Set working directory to the base directory 'gpudrive'
 working_dir = Path.cwd()
 while working_dir.name != 'gpudrive-CoDec':
     working_dir = working_dir.parent
@@ -41,59 +17,15 @@ while working_dir.name != 'gpudrive-CoDec':
 os.chdir(working_dir)
 sys.path.append(str(working_dir))
 
-
-# |GPUDrive imports
-from gpudrive.utils.config import load_config
-from examples.CoDec_Research.code.simulation.construal_main import generate_baseline_data, generate_selected_construal_traj, \
-                                                                    get_constral_heurisrtic_values, generate_all_construal_trajnval
-from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars, get_mov_veh_masks, save_pickle
-from examples.CoDec_Research.code.config import get_active_config, heuristic_params
-
-
-# Function to extract filename from path
-env_path2name = lambda path: path.split("/")[-1].split(".")[0]
-
+# |Import everything
+from examples.CoDec_Research.code.pipelineOne.pipe1_imports import *
 
 # |START TIMER
 start_time = time.perf_counter()
 
-####################################################
-################ SET EXP PARAMETERS ################
-####################################################
-
-curr_config = get_active_config()
-
-construal_count_baseline = curr_config['construal_count_baseline']      # Number of construals to sample for baseline data generation
-trajectory_count_baseline = curr_config['trajectory_count_baseline']    # Number of baseline trajectories to generate per construal
-
-
-### Specify Environment Configuration ###
-
-# |Location to store (and retrieve pre-computed) simulation results
-simulation_results_path = curr_config["simulation_results_path"]
-simulation_results_files = [simulation_results_path+fl_name for fl_name in listdir(simulation_results_path)]
-
-# |Model Config (on which model was trained)
-training_config = load_config("examples/experimental/config/reliable_agents_params")
-
-# |Set scenario path
-dataset_path = curr_config['dataset_path']
-processID = dataset_path.split('/')[-2]                 # Used for storing and retrieving relevant data
-
-# |Set simulator config
-moving_veh_count = training_config.max_controlled_agents      # Get total vehicle count
-num_parallel_envs = curr_config['num_parallel_envs_light']
-total_envs = curr_config['total_envs']
-device = eval(curr_config['device'])
-
-# |Set construal config
-construal_size = curr_config['construal_size']
-observed_agents_count = moving_veh_count - 1                              # Agents observed except self (used for vector sizes)
-sample_size_utility = curr_config['sample_size_utility']            # Number of samples to compute expected utility of a construal
-
-# |Other changes to variables
-training_config.max_controlled_agents = 1                           # Control only the first vehicle in the environment
-total_envs = min(total_envs, len(listdir(dataset_path)))
+#####################################################
+################ SET UP ENVIRONMENTS ################
+#####################################################
 
 moving_veh_masks = get_mov_veh_masks(
                                     training_config=training_config, 
@@ -173,7 +105,6 @@ for batch in tqdm(train_loader, desc=f"Processing Waymo batches",
 
         print(f"Could not find baseline data for current batch. Now computing.")
                 
-        lambdaPath = simulation_results_path + f"lambda{heuristic_params['ego_distance']}_"
         state_action_pairs = generate_baseline_data(sim_agent=sim_agent,
                                                     num_parallel_envs=num_parallel_envs,
                                                     max_agents=moving_veh_count,
@@ -184,7 +115,8 @@ for batch in tqdm(train_loader, desc=f"Processing Waymo batches",
                                                     observed_agents_count=observed_agents_count,
                                                     construal_size=construal_size,
                                                     selected_construals=scene_constr_dict,
-                                                    generate_animations=False)
+                                                    generate_animations=False,
+                                                    expConfig=curr_config)
                 
         #2# |Save data
         savefl_path = simulation_results_path+processID+"_"+"baseline_state_action_pairs_"+str(datetime.now())+".pickle"

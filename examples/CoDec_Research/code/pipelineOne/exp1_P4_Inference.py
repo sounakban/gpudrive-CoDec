@@ -1,38 +1,14 @@
-"""This part of pipeline 1 deals with the inference part of the logic. It computes the likelihood that different construed agents produced 
-    observed trajectories (generalet in first part of the pipeline), then generates estimates of lambda parameters."""
-
-from copy import deepcopy
-from functools import cache
-from os import listdir
-import json
-import pickle
-import gc
-
-from datetime import datetime
-from functools import partial
-
-from scipy.special import softmax
-import numpy as np
-import math
-from itertools import combinations
-
-from typing import Any, List, Tuple
-import time
-
-import torch
-import dataclasses
-
-import pprint
+"""
+    This part of pipeline 1 deals with the inference part of the logic. It computes the likelihood that different construed agents produced 
+    observed trajectories (generalet in first part of the pipeline), then generates estimates of lambda parameters.
+"""
 
 
-# |Set root for GPUDrive import
+# |Set parent to current working directory for imports
 import os
 import sys
 from pathlib import Path
 
-from traitlets import default
-
-# Set working directory to the base directory 'gpudrive'
 working_dir = Path.cwd()
 while working_dir.name != 'gpudrive-CoDec':
     working_dir = working_dir.parent
@@ -41,60 +17,18 @@ while working_dir.name != 'gpudrive-CoDec':
 os.chdir(working_dir)
 sys.path.append(str(working_dir))
 
-
-# |GPUDrive imports
-from gpudrive.utils.config import load_config
-from examples.CoDec_Research.code.simulation.construal_main import generate_baseline_data, generate_selected_construal_traj, \
-                                                                    get_constral_heurisrtic_values, generate_all_construal_trajnval
-from examples.CoDec_Research.code.gpuDrive_utils import get_gpuDrive_vars, get_mov_veh_masks, save_pickle
-from examples.CoDec_Research.code.analysis.evaluate_construal_actions import evaluate_construals, get_best_construals_likelihood
-from examples.CoDec_Research.code.config import get_active_config, ego_dis_param_values, ego_head_param_values, heuristic_params
-
-
-# Function to extract filename from path
-env_path2name = lambda path: path.split("/")[-1].split(".")[0]
-
+# |Import everything
+# from examples.CoDec_Research.code.shared_imports import *
+# from examples.CoDec_Research.code.simulation.construal_main import get_constral_heurisrtic_values
+# from examples.CoDec_Research.code.analysis.evaluate_construal_actions import evaluate_construals
+from examples.CoDec_Research.code.pipelineOne.pipe1_imports import *
 
 # |START TIMER
 start_time = time.perf_counter()
 
-####################################################
-################ SET EXP PARAMETERS ################
-####################################################
-
-curr_config = get_active_config()
-
-construal_count_baseline = curr_config['construal_count_baseline']      # Number of construals to sample for baseline data generation
-trajectory_count_baseline = curr_config['trajectory_count_baseline']    # Number of baseline trajectories to generate per construal
-
-
-### Specify Environment Configuration ###
-
-# |Location to store (and retrieve pre-computed) simulation results
-simulation_results_path = curr_config["simulation_results_path"]
-simulation_results_files = [simulation_results_path+fl_name for fl_name in listdir(simulation_results_path)]
-
-# |Model Config (on which model was trained)
-training_config = load_config("examples/experimental/config/reliable_agents_params")
-
-# |Set scenario path
-dataset_path = curr_config['dataset_path']
-processID = dataset_path.split('/')[-2]                 # Used for storing and retrieving relevant data
-
-# |Set simulator config
-moving_veh_count = training_config.max_controlled_agents      # Get total vehicle count
-num_parallel_envs = curr_config['num_parallel_envs']
-total_envs = curr_config['total_envs']
-device = eval(curr_config['device'])
-
-# |Set construal config
-construal_size = curr_config['construal_size']
-observed_agents_count = moving_veh_count - 1                              # Agents observed except self (used for vector sizes)
-sample_size_utility = curr_config['sample_size_utility']            # Number of samples to compute expected utility of a construal
-
-# |Other changes to variables
-training_config.max_controlled_agents = 1                           # Control only the first vehicle in the environment
-total_envs = min(total_envs, len(listdir(dataset_path)))
+#####################################################
+################ SET UP ENVIRONMENTS ################
+#####################################################
 
 moving_veh_masks = get_mov_veh_masks(
                                     training_config=training_config, 
@@ -114,10 +48,6 @@ env_config, train_loader, env, sim_agent = get_gpuDrive_vars(
                                                             total_envs=total_envs,
                                                             sim_agent_path="daphne-cornelisse/policy_S10_000_02_27",
                                                             )
-
-
-
-
 
 
 curr_data_batch = [env_path2name(scene_path_) for scene_path_ in train_loader.dataset]
@@ -156,7 +86,7 @@ if construal_action_likelihoods is None:
             #2# |Ensure the correct file is being loaded
             fileParams = state_action_pairs.pop("params")
             state_action_pairs.pop('dict_structure')
-            print(fileParams)
+            # print(fileParams)
             if set(state_action_pairs.keys()).issubset(set(curr_data_batch)) and fileParams == heuristic_params:
                 print(f"Using synthetic baseline data from file: {srFile}")
                 construal_action_likelihoods.update(evaluate_construals(state_action_pairs, construal_size, sim_agent, device=device))
@@ -227,8 +157,8 @@ if default_values is None:
     raise FileNotFoundError("Could not find saved file for construal values for current scenes")
 
 
-# |Get probability of lambda values
-target_param = "rel_heading"
+# |Get probability distribution over lambda values
+target_param = "rel_heading"    # ego_distance or rel_heading
 get_constral_heurisrtic_values_partial = partial(get_constral_heurisrtic_values, env=env, 
                                                  train_loader=train_loader, default_values=default_values)
 p_lambda = {}
@@ -237,6 +167,7 @@ target_param_values = ego_head_param_values if target_param == "rel_heading" els
 for curr_lambda in target_param_values:
     curr_lambda = curr_lambda.item()
     curr_heuristic_params[target_param] = curr_lambda
+    # print(curr_heuristic_params)
     curr_heuristic_values = get_constral_heurisrtic_values_partial(heuristic_params=curr_heuristic_params)
     p_lambda[curr_lambda] = {}
     # pprint.pprint(curr_heuristic_values)
