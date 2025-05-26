@@ -18,7 +18,8 @@ os.chdir(working_dir)
 sys.path.append(str(working_dir))
 
 # |Import everything
-from examples.CoDec_Research.code.pipelineOne.pipe1_imports import *
+from examples.CoDec_Research.code.pipelineOne.exp1_imports import *
+from examples.CoDec_Research.code.pipelineOne.exp1_config import *
 
 # |START TIMER
 start_time = time.perf_counter()
@@ -43,23 +44,31 @@ moving_veh_masks = get_mov_veh_masks(
 
 
 # TODO (Post NeurIPS): Optimize code
+# X> Email Daphne and NYU-IT, Print and sign I-539
 # X> Clean up code
 # X> See if the inference algorithm can be optimized (Bayesian Optimization)
-# > Edit exp1_P1_GenMasks.py and exp1_P2_....py
-# > Move Bayesian optimization code to complete_pipeline_1_P2.py
+# X> Edit exp1_P1_GenMasks.py and exp1_P2_....py
+# X> Move Bayesian optimization code to complete_pipeline_1_P2.py
 # > Optimize 'run_policy' function
-# > Convert for loops to list comprihension in env_torch.py: function get_structured_observation
+#   --- Convert for loops to list comprihension in env_torch.py: function get_structured_observation
+#   ---> IMprovement achieved: 2m 34.3s -> 
+# > Implement new heuristics
 # > Reduce redunduncy in baseline data (use data-class to save data)
+# > Encapsulate operations into functions
 # > We might have to re-evaluate our measure of construal utilities or use other data
 #   --- This is great for inferring discrete values of one parameter 
 #   --- We might need more expressive utility values as our problem becomes more complex
 #   --- I was thinking if we could train an attentional network alongside the PPO agent, which could 
 #       provide behavioral utilities of various objects in the environment, and could be used to 
 #       estimate the behavioral utility of various construals.
-#   --- Or any construal, containing vehicles whith whom the trajectories of the ego vehicle
+#   --- Or any construal, containing vehicles with whom the trajectories of the ego vehicle
 #       intersect in the next n-seconds (can be justified by the fact that experts often 
 #       make decisions based on forward simulations)
 
 
-# More thoughts (On expertise): Experts move away from computationally expensive simulations to heuristics
+# More thoughts (On expertise): Experts move away from computationally expensive simulations to heuristics 
+# Two routes for implementation: 1. weight for the value guided part and (1 - weight) for the heuristic part. 
+#                                   weight decreases with expertise. 
+#                                2. The complete state-space is limited by heuristics, reducing the size (=complexity)
+#                                   of both the planning and evaluation models.
 

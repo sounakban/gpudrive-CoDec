@@ -18,7 +18,8 @@ os.chdir(working_dir)
 sys.path.append(str(working_dir))
 
 # |Import everything
-from examples.CoDec_Research.code.pipelineOne.pipe1_imports import *
+from examples.CoDec_Research.code.pipelineOne.exp1_imports import *
+from examples.CoDec_Research.code.pipelineOne.exp1_config import *
 
 # |START TIMER
 start_time = time.perf_counter()

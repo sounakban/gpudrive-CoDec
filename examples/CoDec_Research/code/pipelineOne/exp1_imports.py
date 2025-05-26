@@ -28,9 +28,7 @@ from examples.CoDec_Research.code.simulation.construal_main import *
 
 
 
-
-####################################################
-################ SET EXP PARAMETERS ################
-####################################################
-
-##### Done in Shared Import #####
+# Inference imports
+from bayes_opt import BayesianOptimization # | Tutorial: https://towardsdatascience.com/bayesian-optimization-with-python-85c66df711ec/
+from skopt import gp_minimize
+from skopt.space import Real

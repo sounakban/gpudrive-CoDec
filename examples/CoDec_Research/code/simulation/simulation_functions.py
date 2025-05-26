@@ -46,7 +46,24 @@ def save_animations(sim_state_frames: dict, save_dir: str = './sim_vids'):
         )
 
 
-
+@cache
+def get_action_template(total_envs: int, max_agents: int, device: str) -> torch.Tensor:
+    """
+    Create an action template for the environment based on the control mask.
+    This function is created for code optimization through caching.
+    
+    Args:
+        total_envs: Total number of environments
+        max_agents: Maximum number of agents in the environment
+        device: Device to place the tensor on (CPU or GPU)
+    
+    Returns:
+        action_template: A tensor with shape (total_envs, max_agents) initialized to zeros
+    """
+    action_template = torch.zeros(
+        (total_envs, max_agents), dtype=torch.int64, device=device
+    )
+    return action_template
 
 
 
@@ -67,9 +84,10 @@ def run_policy(env: GPUDriveTorchEnv,
     # |Predict actions
     action, _, _, _, action_logits = sim_agent(next_obs[control_mask], deterministic=False)
 
-    action_template = torch.zeros(
-        (total_envs, max_agents), dtype=torch.int64, device=device
-    )
+    # action_template = torch.zeros(
+    #     (total_envs, max_agents), dtype=torch.int64, device=device
+    # )
+    action_template = get_action_template(total_envs, max_agents, device)
     action_template[control_mask] = action.to(device)
 
     # |Garb raw observations before stepping through environment for debug logic later
@@ -78,8 +96,8 @@ def run_policy(env: GPUDriveTorchEnv,
     # |Step
     env.step_dynamics(action_template)
 
-    #2# |Print GPU usage
-    print_gpu_usage(device)
+    #2# |DEBUG: Print GPU usage
+    # print_gpu_usage(device)
 
     # |Render
     if generate_animations:

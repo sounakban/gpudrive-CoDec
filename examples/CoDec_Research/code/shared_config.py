@@ -1,4 +1,7 @@
-import numpy as np
+
+
+# |Shared Imports
+from examples.CoDec_Research.code.shared_imports import *
 
 
 
@@ -7,17 +10,21 @@ def get_active_config():
 
 
 
-ego_dis_param_values = np.linspace(0,10,11)
-ego_head_param_values = np.linspace(-15,15,31)
+# |Hueristics and their weight parameters (to be inferred)
+heuristic_params_vals = {  
+                        "ego_distance": np.linspace(0,10,11),                                             
+                        "rel_heading": np.linspace(-15,15,31),
+                        "cardinality": np.linspace(0,10,11)
+                        }
 
 # Preset parameters for Inference
 # heuristic_params = {"ego_distance": ego_dis_param_values[5],            # Hueristics and their weight parameters (to be inferred)
 #                     "rel_heading": ego_head_param_values[1],
 #                     "cardinality": 1}
 
-# Preset parameters for Inference
-heuristic_params = {                                                    # Hueristics and their weight parameters (to be inferred)
-                    "rel_heading": ego_head_param_values[15],
+# |Hueristics and their weight parameters (to be inferred)
+heuristic_params = {                                                    
+                    "rel_heading": heuristic_params_vals['rel_heading'][15],
                     "cardinality": 2
                     }
 

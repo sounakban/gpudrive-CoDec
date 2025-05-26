@@ -18,7 +18,8 @@ os.chdir(working_dir)
 sys.path.append(str(working_dir))
 
 # |Import everything
-from examples.CoDec_Research.code.pipelineOne.pipe1_imports import *
+from examples.CoDec_Research.code.pipelineOne.exp1_imports import *
+from examples.CoDec_Research.code.pipelineOne.exp1_config import *
 
 # |START TIMER
 start_time = time.perf_counter()
@@ -29,6 +30,15 @@ start_time = time.perf_counter()
 #####################################################
 ################ SET UP ENVIRONMENTS ################
 #####################################################
+
+moving_veh_masks = get_mov_veh_masks(
+                                    training_config=training_config, 
+                                    device=device, 
+                                    dataset_path=dataset_path,
+                                    max_agents=moving_veh_count,
+                                    result_file_loc=simulation_results_path,
+                                    processID=processID
+                                    )
 
 env_config, train_loader, env, sim_agent = get_gpuDrive_vars(
                                                             training_config=training_config,
@@ -49,7 +59,7 @@ env_config, train_loader, env, sim_agent = get_gpuDrive_vars(
 default_values = None
 traj_obs = None
 
-#2# |Check if saved construal utility data is available
+# |Check if saved construal utility data is available
 for srFile in simulation_results_files:
     if "construal_vals" in srFile:
         with open(srFile, 'rb') as opn_file:
@@ -61,6 +71,7 @@ for srFile in simulation_results_files:
         else:
             default_values = None
 
+# |If not, simluate and compute
 if default_values is None:
     default_values, traj_obs, ground_truth, _ = generate_all_construal_trajnval(sim_agent=sim_agent,
                                                                                 observed_agents_count=observed_agents_count,
@@ -74,39 +85,33 @@ if default_values is None:
                                                                                 moving_veh_masks=moving_veh_masks,
                                                                                 generate_animations=False,
                                                                                 expConfig=curr_config)
-    #3# |Save data
+
+    #2# |If using discounted rewards for construal values, convert [NOT IMPLEMENTED]
+    discounted_rewards = False
+    if discounted_rewards:
+        # default_values = default_to_discounted(default_values, traj_obs)
+        pass
+
+    #2# |Save data
     savefl_path = simulation_results_path+processID+"_"+"construal_vals_"+str(datetime.now())+".pickle"
     save_pickle(savefl_path, default_values, "Construal value")
     savefl_path = simulation_results_path+processID+"_"+"constr_traj_obs_"+str(datetime.now())+".pickle"
     save_pickle(savefl_path, traj_obs, "Trajectory observation")
     savefl_path = simulation_results_path+processID+"_"+"ground_truth_"+str(datetime.now())+".pickle"
     save_pickle(savefl_path, ground_truth, "Ground truth")
-    #3# Free up memory
+    #2# Free up memory (for unused variables)
     del traj_obs, ground_truth
 
 
 
-discounted_rewards = False
-if discounted_rewards:
-    if traj_obs is None:
-        for srFile in simulation_results_files:
-            if "constr_traj_obs_" in srFile:
-                with open(srFile, 'rb') as opn_file:
-                    traj_obs = pickle.load(opn_file)
-                #2# |Ensure the correct file is being loaded
-                if all(env_path2name(scene_path_) in traj_obs.keys() for scene_path_ in train_loader.dataset):
-                    print(f"Using construal values from file: {srFile}")
-                    break
-                else:
-                    traj_obs = None
-    # default_values = default_to_discounted(default_values, traj_obs)
+
 
 
 
 ### Select Construals for Baseline Data ###
 scene_constr_dict = None
 
-#2# |Check if saved construal sampling data is available
+# |Check if saved construal sampling data is available
 for srFile in simulation_results_files:
     if "sampled_construals" in srFile:
         with open(srFile, 'rb') as opn_file:
@@ -118,11 +123,13 @@ for srFile in simulation_results_files:
         else:
             scene_constr_dict = None
 
+
+# |If not, compute biased heuristic values and sample
 if scene_constr_dict is None:
-    # |Generate Construal Heuristic Values
+    #2# |Generate Construal Heuristic Values
     heuristic_values = get_constral_heurisrtic_values(env, train_loader, default_values, heuristic_params=heuristic_params)
 
-    # |Sample construals for generating baseline data
+    #2# |Sample construals for generating baseline data
     def sample_construals(heuristic_values: dict, sample_count: int) -> dict:
         """
         Sample construals based on heuristic values.
@@ -144,6 +151,7 @@ if scene_constr_dict is None:
 
     scene_constr_dict = sample_construals(heuristic_values, sample_count=construal_count_baseline)
 
+    #2# Save sampling data
     scene_constrFile = simulation_results_path + processID + "_" + "sampled_construals_"+str(datetime.now())+".pickle"
     scene_constr_dict["params"] = heuristic_params
     save_pickle(scene_constrFile, scene_constr_dict, "Sampled construals")
