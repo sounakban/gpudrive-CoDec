@@ -265,3 +265,5 @@ output_videos_small_dataset/
 models/
 
 # End of https://www.toptal.com/developers/gitignore/api/python,c++
+data/processed/InteractiveDataset/Screenshot 2025-05-24 at 15.20.35.png
+data/processed/InteractiveDataset/wosac.zip

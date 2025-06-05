@@ -23,3 +23,7 @@ from examples.CoDec_Research.code.shared_imports import *
 
 # |GPUDrive imports
 from gpudrive.env.env_torch import GPUDriveConstrualEnv
+
+# |Library imports
+from numpy import dot
+from numpy.linalg import norm

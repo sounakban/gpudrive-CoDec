@@ -6,8 +6,11 @@
 from examples.CoDec_Research.code.simulation.simulation_imports import *
 
 # |Same-level imports
+from examples.CoDec_Research.code.construals.heuristic_functions import *
+
+# |Local imports
 from examples.CoDec_Research.code.simulation.simulation_functions import *
-from examples.CoDec_Research.code.construals.construal_functions import *
+from examples.CoDec_Research.code.simulation.data_manager import *
 
 
 
@@ -232,8 +235,9 @@ def generate_baseline_data( sim_agent: NeuralNet,
         print("Saving baseline data")
         # |Save the state-action pairs to a file
         savefl_path = out_dir+"baseline_state_action_pairs_"+str(datetime.now())+".pickle"
-        with open(savefl_path, 'wb') as file:
-            pickle.dump(state_action_pairs, file, protocol=pickle.HIGHEST_PROTOCOL)
+        ObservationDataManager.save_data(state_action_pairs, savefl_path)
+        # with open(savefl_path, 'wb') as file:
+        #     pickle.dump(state_action_pairs, file, protocol=pickle.HIGHEST_PROTOCOL)
         print("Baseline data saved to: ", savefl_path)
 
     return state_action_pairs
@@ -253,12 +257,6 @@ def get_constral_heurisrtic_values(env: GPUDriveConstrualEnv, train_loader: Scen
         default_values: Dictionary containing the default values for all construals in  each scene
         average: If true, return the average construal value for all vehicles in the construal
         heuristic: The heuristic to use for the construal value
-            0: Default construal values
-            1: Distance from ego vehicle
-            2: -
-            3: -
-            4: -
-            5: -
         heuristic_params: Dictionary containing the parameters for the heuristic. Keys:
             "ego_distance": parameter for (ego) distance heuristic
         normalize: If true, return the normalized [0,1] heuristics values for all construals
@@ -267,9 +265,6 @@ def get_constral_heurisrtic_values(env: GPUDriveConstrualEnv, train_loader: Scen
     Returns:
         The average distance or a list of distances from the ego vehicle to each vehicle in the construal
     '''
-    heuristics_to_func = {"ego_distance": get_construal_veh_distance_ego,
-                          "rel_heading": get_construal_rel_heading_ego,
-                          "cardinality": get_construal_cardinality,}
     active_heuristics = {heuristics_to_func[curr_heuristic_]: curr_heuristic_val_
                             for curr_heuristic_, curr_heuristic_val_ in heuristic_params.items()}
     

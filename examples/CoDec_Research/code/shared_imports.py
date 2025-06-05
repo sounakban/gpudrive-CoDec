@@ -11,11 +11,11 @@ import pickle
 import gc
 from datetime import datetime
 from functools import partial
+from itertools import combinations
 
 from scipy.special import softmax
 import numpy as np
 import math
-from itertools import combinations
 
 from typing import Any, List, Tuple, Dict
 import time
@@ -47,9 +47,8 @@ from gpudrive.utils.config import load_config
 # |CoDec imports
 from examples.CoDec_Research.code.gpuDrive_utils import *
 
-# # |Lower level imports
-# from examples.CoDec_Research.code.simulation.construal_main import *
-# from examples.CoDec_Research.code.analysis.evaluate_construal_actions import *
-
 # Function to extract filename from path
 env_path2name = lambda path: path.split("/")[-1].split(".")[0]
+
+# Function to get file list at given path
+get_files_at_loc = lambda dir_path: [dir_path+fl_name for fl_name in listdir(dir_path)]

@@ -1,12 +1,12 @@
 from examples.CoDec_Research.code.shared_config import *
 
-target_param = "rel_heading"    # ego_distance or rel_heading
-
 
 
 ####################################################
 ################ SET EXP PARAMETERS ################
 ####################################################
+
+target_param = ["dev_ego_heading"]    # parameter to infer
 
 curr_config = get_active_config()
 
@@ -18,7 +18,12 @@ trajectory_count_baseline = curr_config['trajectory_count_baseline']    # Number
 
 # |Location to store (and retrieve pre-computed) simulation results
 simulation_results_path = curr_config["simulation_results_path"]
+intermediate_results_path = simulation_results_path + curr_config["intermediate_file_location"]
 simulation_results_files = [simulation_results_path+fl_name for fl_name in listdir(simulation_results_path)]
+intermediate_results_files = [intermediate_results_path+fl_name for fl_name in listdir(intermediate_results_path)]
+
+# |Intermediate results files containing these keywords will be deteleted after process completes
+keywords2delete = ['log_likelihood','sampled_construals','baseline_state_action_pairs'] 
 
 # |Model Config (on which model was trained)
 training_config = load_config("examples/experimental/config/reliable_agents_params")
@@ -30,6 +35,7 @@ processID = dataset_path.split('/')[-2]                 # Used for storing and r
 # |Set simulator config
 moving_veh_count = training_config.max_controlled_agents      # Get total vehicle count
 num_parallel_envs = curr_config['num_parallel_envs']
+num_parallel_envs_dataGen = curr_config['num_parallel_envs_light']
 total_envs = curr_config['total_envs']
 device = eval(curr_config['device'])
 

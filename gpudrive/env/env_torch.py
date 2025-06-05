@@ -1571,7 +1571,8 @@ class GPUDriveConstrualEnv(GPUDriveTorchEnv):
                 except Error as e:
                     raise ValueError("Cannot convert partner mask to numpy array because:\n"+e)
                 
-                masked_values = torch.tensor([0,]*result.shape[-1], dtype=result.dtype).to(self.device)   # CACHE this for optimization
+                # masked_values = torch.tensor([0,]*result.shape[-1], dtype=result.dtype).to(self.device)   # CACHE this for optimization
+                masked_values = torch.zeros(result.shape[-1], dtype=result.dtype, device=self.device)
                 if len(partner_mask.shape) == 1:
                     result[:, :, partner_mask] = masked_values
                 elif len(partner_mask.shape) == 3:

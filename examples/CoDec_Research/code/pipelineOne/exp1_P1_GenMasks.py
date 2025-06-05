@@ -21,27 +21,44 @@ sys.path.append(str(working_dir))
 from examples.CoDec_Research.code.pipelineOne.exp1_imports import *
 from examples.CoDec_Research.code.pipelineOne.exp1_config import *
 
-# |START TIMER
-start_time = time.perf_counter()
 
 
 
 
-#####################################################
-################ SET UP ENVIRONMENTS ################
-#####################################################
-
-### Save Moving Veh Info ###
-moving_veh_masks = get_mov_veh_masks(
-                                    training_config=training_config, 
-                                    device=device, 
-                                    dataset_path=dataset_path,
-                                    max_agents=moving_veh_count,
-                                    result_file_loc=simulation_results_path,
-                                    processID=processID
-                                    )
 
 
+
+if __name__ == "__main__":
+    # |Run the main function
+    """
+    Save Moving Veh Masks for a particular batch of data
+    This is part of a separate code because, the process requires instansiation of a separate GPUDrive 
+        envrironment, which fails when multiple environments are active simultaneously.
+    """
+    
+    # |START TIMER
+    start_time = time.perf_counter()
+    
+    moving_veh_masks = get_mov_veh_masks(
+                                        training_config=training_config, 
+                                        device=device, 
+                                        dataset_path=dataset_path,
+                                        max_agents=moving_veh_count,
+                                        result_file_loc=intermediate_results_path,
+                                        processID=processID
+                                        )
+
+    # |Print the execution time
+    execution_time = time.perf_counter() - start_time
+    print(f"Execution time: {math.floor(execution_time/60)} minutes and {execution_time%60:.1f} seconds")
+
+
+
+
+
+
+
+    
 
 # TODO (Post NeurIPS): Optimize code
 # X> Email Daphne and NYU-IT, Print and sign I-539
@@ -49,12 +66,15 @@ moving_veh_masks = get_mov_veh_masks(
 # X> See if the inference algorithm can be optimized (Bayesian Optimization)
 # X> Edit exp1_P1_GenMasks.py and exp1_P2_....py
 # X> Move Bayesian optimization code to complete_pipeline_1_P2.py
-# > Optimize 'run_policy' function
-#   --- Convert for loops to list comprihension in env_torch.py: function get_structured_observation
-#   ---> IMprovement achieved: 2m 34.3s -> 
+# X> Optimize 'run_policy' function
+#   ---> Improvement achieved: None (for CPU), already heavily optimized code
 # > Implement new heuristics
-# > Reduce redunduncy in baseline data (use data-class to save data)
-# > Encapsulate operations into functions
+#   --- Check current implementations
+# X> Reduce redunduncy in baseline data (use data-class to save data)
+# > Implement logic for looping through multiple values of lambda
+#   --- Encapsulate operations into functions
+#   --- Implement argument-based script execution
+# > Implement tool for visually editing scenarios
 # > We might have to re-evaluate our measure of construal utilities or use other data
 #   --- This is great for inferring discrete values of one parameter 
 #   --- We might need more expressive utility values as our problem becomes more complex
@@ -71,4 +91,3 @@ moving_veh_masks = get_mov_veh_masks(
 #                                   weight decreases with expertise. 
 #                                2. The complete state-space is limited by heuristics, reducing the size (=complexity)
 #                                   of both the planning and evaluation models.
-

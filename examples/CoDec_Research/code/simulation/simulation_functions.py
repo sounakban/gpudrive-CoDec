@@ -2,8 +2,7 @@
 # |Higher-level imports
 from examples.CoDec_Research.code.simulation.simulation_imports import *
 
-# |Local imports
-from examples.CoDec_Research.code.construals.construal_functions import *
+# |Same-level imports
 from examples.CoDec_Research.code.analysis.evaluate_construal_actions import process_state
 
 
@@ -46,27 +45,6 @@ def save_animations(sim_state_frames: dict, save_dir: str = './sim_vids'):
         )
 
 
-@cache
-def get_action_template(total_envs: int, max_agents: int, device: str) -> torch.Tensor:
-    """
-    Create an action template for the environment based on the control mask.
-    This function is created for code optimization through caching.
-    
-    Args:
-        total_envs: Total number of environments
-        max_agents: Maximum number of agents in the environment
-        device: Device to place the tensor on (CPU or GPU)
-    
-    Returns:
-        action_template: A tensor with shape (total_envs, max_agents) initialized to zeros
-    """
-    action_template = torch.zeros(
-        (total_envs, max_agents), dtype=torch.int64, device=device
-    )
-    return action_template
-
-
-
 def run_policy(env: GPUDriveTorchEnv,
                sim_agent: NeuralNet,
                next_obs: torch.Tensor,
@@ -80,17 +58,43 @@ def run_policy(env: GPUDriveTorchEnv,
                const_num: int,
                sample_num: int,
                generate_animations: bool = False,
+               generate_structured_obs: bool = False,
                ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, Any]:
+    """
+    Run a single step of the simulation policy, and return the next observations, rewards, done flags, info, and action logits.
+    Args:
+        env: GPUDriveTorchEnv environment instance
+        sim_agent: NeuralNet instance representing the policy to be executed
+        next_obs: Current observations of the environment
+        control_mask: Mask indicating which agents are controlled by the model
+        construal_masks: Masks for construals, if any
+        time_step: Current time step in the simulation
+        total_envs: Total number of environments being simulated
+        max_agents: Maximum number of agents in the environment
+        device: Device to run the simulation on (CPU or GPU)
+        frames: Dictionary to store frames for rendering
+        const_num: Current construal number being processed (used for saving animation data)
+        sample_num: Current sample number for multi-sample experiments (used for saving animation data)
+        generate_animations: Boolean flag indicating whether to generate animations
+        generate_structured_obs: Boolean flag indicating whether to generate structured observations for plotting
+
+    Returns:
+        next_obs: Next observations after taking the action
+        reward: Rewards received after taking the action
+        done: Done flags indicating if the episode has ended
+        info: Additional information from the environment
+        plottable_obs: Observations formatted for plotting (if generate_structured_obs is True)
+        action_logits: Action logits from the policy
+    """
     # |Predict actions
     action, _, _, _, action_logits = sim_agent(next_obs[control_mask], deterministic=False)
 
-    # action_template = torch.zeros(
-    #     (total_envs, max_agents), dtype=torch.int64, device=device
-    # )
-    action_template = get_action_template(total_envs, max_agents, device)
+    action_template = torch.zeros(
+        (total_envs, max_agents), dtype=torch.int64, device=device
+    )
     action_template[control_mask] = action.to(device)
 
-    # |Garb raw observations before stepping through environment for debug logic later
+    # |Grab raw observations before stepping through environment for debug logic later
     # tmp1_ = env.get_obs(raw_obs=True)
 
     # |Step
@@ -119,8 +123,10 @@ def run_policy(env: GPUDriveTorchEnv,
     done = env.get_dones()
     info = env.get_infos()
 
-    # |Variable for trajectory illustrations
-    plottable_obs = env.get_structured_obs(partner_mask=construal_masks)
+    plottable_obs = None
+    if generate_structured_obs:
+        # |Variable for trajectory illustrations
+        plottable_obs = env.get_structured_obs(partner_mask=construal_masks)
 
     # |DEBUG LOGIC: Check if state processing logic is operating correctly
     # tmp2_ind_, tmpt2_mask_ = get_construals(64, (1,), 1, expanded_mask = True)['default']
@@ -275,6 +281,7 @@ def simulate_policies(env: GPUDriveConstrualEnv,
                                                                                         const_num=const_num,
                                                                                         sample_num=sample_num,
                                                                                         generate_animations=generate_animations,
+                                                                                        generate_structured_obs=save_trajectory_obs,
                                                                                     )
 
                 #3# |Record state-action pairs
@@ -432,6 +439,7 @@ def simulate_selected_construal_policies(env: GPUDriveConstrualEnv,
                                                                                         const_num=const_num,
                                                                                         sample_num=sample_num,
                                                                                         generate_animations=generate_animations,
+                                                                                        generate_structured_obs=True,
                                                                                     )
 
                 #3# |Record observations for each construal
