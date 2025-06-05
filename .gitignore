@@ -252,6 +252,7 @@ examples/experimental/logs/*
 # Results
 examples/CoDec_Research/results/simulation_results
 data/processed/Viz*
+data/processed/gitIgnore_data
 
 # Sbatch scripts
 *.sh
