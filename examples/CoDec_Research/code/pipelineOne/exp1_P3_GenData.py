@@ -147,6 +147,10 @@ if __name__ == "__main__":
     
     from examples.CoDec_Research.code.pipelineOne.exp1_config import *
 
+    # |Number of parallel environments for the data gerentaion process needs to account for memory limitations
+    # num_parallel_envs=num_parallel_envs
+    num_parallel_envs=num_parallel_envs_dataGen
+
     if len(sys.argv) > 1:
         # |If calling code with arguments
         # |Uses values from configuration file if values are not passed as argument
@@ -175,7 +179,6 @@ if __name__ == "__main__":
                                                                 training_config=training_config,
                                                                 device=device,
                                                                 num_parallel_envs=num_parallel_envs,
-                                                                # num_parallel_envs=num_parallel_envs_dataGen,
                                                                 dataset_path=dataset_path,
                                                                 total_envs=total_envs,
                                                                 sim_agent_path="daphne-cornelisse/policy_S10_000_02_27",

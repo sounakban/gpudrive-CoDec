@@ -50,7 +50,7 @@ local_config_2= {# |run inference on baseline data already generated on the serv
                 'dataset_path': 'data/processed/construal/Set1V2/',         # Path to scenario files
                 'construal_size': 1,
                 'num_parallel_envs': 10,
-                'num_parallel_envs_light': 2,                             # Number of parallel environments for memory intensive operations
+                'num_parallel_envs_light': 5,                             # Number of parallel environments for memory intensive operations
                 'total_envs': 10,
                 'device': "'cpu'",
                 'sample_size_utility': 1,                                 # Number of samples to compute expected utility of a construal

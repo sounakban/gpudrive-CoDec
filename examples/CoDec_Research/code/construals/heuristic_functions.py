@@ -84,6 +84,7 @@ def get_construal_veh_distance_ego(env: GPUDriveConstrualEnv, construal_indices:
                 if len(distance_dict[env_name][curr_indices]) > 0:
                     distance_dict[env_name][curr_indices] = sum(distance_dict[env_name][curr_indices])/len(distance_dict[env_name][curr_indices])
                 else:
+                    #3# | If empty construal
                     distance_dict[env_name][curr_indices] = 0
                     
     return distance_dict
@@ -141,6 +142,7 @@ def get_construal_dev_ego_heading(env: GPUDriveConstrualEnv, construal_indices: 
                 if len(heading_dev_dict[env_name][curr_indices]) > 0:
                     heading_dev_dict[env_name][curr_indices] = sum(heading_dev_dict[env_name][curr_indices])/len(heading_dev_dict[env_name][curr_indices])
                 else:
+                    #3# | If empty construal
                     heading_dev_dict[env_name][curr_indices] = 0
                     
     return heading_dev_dict
@@ -182,6 +184,7 @@ def get_construal_rel_heading_ego(env: GPUDriveConstrualEnv, construal_indices: 
                                         ) 
                                         for i in range(len(all_vel[env_num]))]
               
+        # TODO: See if commenting out nomalization helps
         if normalize:
             #2# |Normalize relative headings to [0,1] using min-max scaling
             relative_headings = (np.array(relative_headings) - np.min(relative_headings)) / (np.max(relative_headings) - np.min(relative_headings))
@@ -192,6 +195,7 @@ def get_construal_rel_heading_ego(env: GPUDriveConstrualEnv, construal_indices: 
                 if len(relative_heading_dict[env_name][curr_indices]) > 0:
                     relative_heading_dict[env_name][curr_indices] = sum(relative_heading_dict[env_name][curr_indices])/len(relative_heading_dict[env_name][curr_indices])
                 else:
+                    #3# | If empty construal
                     relative_heading_dict[env_name][curr_indices] = 0
                     
     return relative_heading_dict
@@ -245,6 +249,7 @@ def get_construal_dev_collision_ego(env: GPUDriveConstrualEnv, construal_indices
                                 vel_vec, dis_vec in zip(relative_vel, relative_dis)]
 
         #2# |Normalization not necessary, as values are computed using unitary vectors and results range between 0 and 1
+        # TODO: See rescaling values between 1 and -1 help
 
         for curr_indices in info_dict[env_name]['construal_indices']:
             deviation_collision_dict[env_name][curr_indices] = [dev_collision[i] for i in curr_indices]
@@ -252,6 +257,7 @@ def get_construal_dev_collision_ego(env: GPUDriveConstrualEnv, construal_indices
                 if len(deviation_collision_dict[env_name][curr_indices]) > 0:
                     deviation_collision_dict[env_name][curr_indices] = sum(deviation_collision_dict[env_name][curr_indices])/len(deviation_collision_dict[env_name][curr_indices])
                 else:
+                    #3# | If empty construal
                     deviation_collision_dict[env_name][curr_indices] = 0
                     
     return deviation_collision_dict
