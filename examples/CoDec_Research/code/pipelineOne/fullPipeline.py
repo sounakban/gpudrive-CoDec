@@ -10,9 +10,10 @@ start_time = time.perf_counter()
 
 
 # |Loop through lambdas
-sample_count = 20
+sample_count = 1
 lambda_heur = ["rel_heading"]
-lambda_val = [np.random.uniform(-15,15,sample_count)]
+lambda_val = [np.random.uniform(-5,5,sample_count)]
+# lambda_val = [[6,]]     #DEBUG: Test
 
 
 lambda_val = list(zip(*lambda_val))                 # Change list structure for code compatibility

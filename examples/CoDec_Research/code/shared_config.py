@@ -81,14 +81,15 @@ server_config = {
 ### HEURISTICS CONFIGURATION ###
 ################################
 
+param_val_sampling_rate = 31
 
 # |Dictionary specifying the range of weights for each heuristic
 heuristic_params_vals = {  
-                        "cardinality": np.linspace(0,10,11),
-                        "ego_distance": np.linspace(0,10,11),
-                        "dev_ego_heading": np.linspace(-15,15,31),
-                        "rel_heading": np.linspace(-15,15,31),
-                        "dev_collission": np.linspace(-15,15,31),
+                        "cardinality": np.linspace(0,10,param_val_sampling_rate),
+                        "ego_distance": np.linspace(0,10,param_val_sampling_rate),
+                        "dev_ego_heading": np.linspace(-15,15,param_val_sampling_rate),
+                        "rel_heading": np.linspace(-15,15,param_val_sampling_rate),
+                        "dev_collission": np.linspace(-15,15,param_val_sampling_rate),
                         }
 
 # |Hueristics values used for generating the synthetic data

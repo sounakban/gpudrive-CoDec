@@ -136,7 +136,7 @@ def compute_constual_likelihoods(
 
 
 def compute_param_likelihoods(
-                                target_param: List,
+                                target_params: List,
                                 train_loader: SceneDataLoader,
                                 out_dir: str,
                                 processID: str,
@@ -178,7 +178,7 @@ def compute_param_likelihoods(
             #4# |If using skopt optimizer, lambda_heur is a list with one element
             lambda_heur = lambda_heur[0]
             flag = True
-        #2# |lambda_heur: hyper parameter to optimize for.
+        #2# |lambda_heur: hyper parameter to optimize for
         for param_, val_ in kwargs.items():
             curr_heuristic_params[param_] = val_
         curr_heuristic_values = get_constral_heurisrtic_values_partial(heuristic_params=curr_heuristic_params)
@@ -205,17 +205,19 @@ def compute_param_likelihoods(
         #2# |Get probability distribution over all integer lambda values by looping over range
 
         lamda_inference = {}
-        target_param_values = []
-        for param_ in target_param:
-            target_param_values.append(heuristic_params_vals[param_])
-        for curr_lambda in target_param_values:
-            lamda_inference[curr_lambda] = -1*get_lambda_likelihood(curr_lambda)    # multiply by '-1' for negative log lik.
+        target_param_value_range = {param_:heuristic_params_vals[param_] for param_ in target_params}
+        target_param_value_sets = zip(*target_param_value_range.values())       # Assuming equal sample count for all parameters
+        for curr_val_set in target_param_value_sets:
+            curr_args = tuple(zip(target_param_value_range.keys(), curr_val_set))
+            lamda_inference[curr_args] = -1*get_lambda_likelihood(**dict(curr_args))    # multiply by '-1' for negative log likelihood
 
-        print("lamda_inference: ", lamda_inference)
-        resultFile = out_dir + processID + "_" + "inference_results_"+str(datetime.now())+".json"
+        # print("lamda_inference: ", lamda_inference)
+        resultFile = out_dir + processID + "_" + "inference_distribution_"+str(datetime.now())+".json"
         lamda_inference["TrueParams"] = synthData_params
         with open(resultFile, 'w') as json_file:
-            json.dump(lamda_inference, json_file, indent=4)
+            json_file.write(str(lamda_inference))
+            # json.dump(lamda_inference, json_file, indent=4)
+        return None
 
     else:
         #2# |Perform bayesian optimization to get best fit lambda value for observed behavior (trajectories)
@@ -223,7 +225,7 @@ def compute_param_likelihoods(
         #3# Create a BayesianOptimization optimizer, and optimize the given black_box_function.
         # pbounds = {"lambda_heur": [-15, 15]}    # Set range of lambda to optimize for.
         pbounds = {param_:[heuristic_params_vals[param_].min().item(), heuristic_params_vals[param_].max().item()] 
-                        for param_ in target_param}    # Set range of lambda to optimize for.
+                        for param_ in target_params}    # Set range of lambda to optimize for.
         optimizer = BayesianOptimization(f = get_lambda_likelihood,
                                         pbounds = pbounds, verbose = 0,
                                         random_state = 4)
@@ -318,7 +320,7 @@ if __name__ == "__main__":
                                                                 )
     
     result = compute_param_likelihoods(
-                                        target_param= target_param,
+                                        target_params= target_param,
                                         train_loader= train_loader,
                                         out_dir= intermediate_results_path,
                                         processID= processID,
@@ -330,12 +332,14 @@ if __name__ == "__main__":
     
 
     ##### Write result out to file #####
-    fileExists = True if os.path.isfile(intermediate_results_path+processID+"_results.tsv") else False
-    with open(intermediate_results_path+processID+"_results.tsv", "a") as resultFile:
-        if not fileExists:
-            resultFile.write('\t'.join(['parameter', 'lambda_true', 'lambda_predicted\n']))
-        for param_ in target_param:
-            resultFile.write( '\t'.join([param_, str(active_heuristic_params[param_]), str(result[0][param_])])+'\n' )
+    if not result is None:
+        # |Result is none when distribution of lambda is calculated
+        fileExists = True if os.path.isfile(intermediate_results_path+processID+"_results.tsv") else False
+        with open(intermediate_results_path+processID+"_results.tsv", "a") as resultFile:
+            if not fileExists:
+                resultFile.write('\t'.join(['parameter', 'lambda_true', 'lambda_predicted\n']))
+            for param_ in target_param:
+                resultFile.write( '\t'.join([param_, str(active_heuristic_params[param_]), str(result[0][param_])])+'\n' )
     
 
     ##### Delete intermediate files #####
