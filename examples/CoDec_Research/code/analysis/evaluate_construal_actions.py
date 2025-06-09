@@ -137,7 +137,7 @@ def evaluate_construals(baseline_data: Dict,
                                                                                         expanded_mask=True, device=device)
                     true_action_dist = None
                     pred_action_dist = None
-                    print(f"Processing baseline construal {baseline_constr_indxs} against construal {test_construal_indices}, sample {sample_num}")
+                    print(f"\rProcessing baseline construal {baseline_constr_indxs} against construal {test_construal_indices}, sample {sample_num}", end="")
                     for timestep, (raw_state, true_action_logits) in enumerate(sample):
                         next_obs = process_state(raw_state, test_construal_mask, timestep)
                         # if timestep == 0:
@@ -163,6 +163,7 @@ def evaluate_construals(baseline_data: Dict,
                                                                                 "likelihood": torch.prod(likelihood),
                                                                                 "log_likelihood": -1*sum(torch.log(likelihood)),
                                                                                 "log_likelihood_diff": sum(torch.log(likelihood_diff)),}
+            print("")     # Move to new line
 
     if saveResults:
         # |Save log likelihood moeasures to file

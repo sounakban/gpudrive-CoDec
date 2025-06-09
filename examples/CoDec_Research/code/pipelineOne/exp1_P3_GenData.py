@@ -148,7 +148,6 @@ if __name__ == "__main__":
     from examples.CoDec_Research.code.pipelineOne.exp1_config import *
 
     # |Number of parallel environments for the data gerentaion process needs to account for memory limitations
-    # num_parallel_envs=num_parallel_envs
     num_parallel_envs=num_parallel_envs_dataGen
 
     if len(sys.argv) > 1:

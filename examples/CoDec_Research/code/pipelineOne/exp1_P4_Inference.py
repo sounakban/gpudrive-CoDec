@@ -222,6 +222,11 @@ def compute_param_likelihoods(
     else:
         #2# |Perform bayesian optimization to get best fit lambda value for observed behavior (trajectories)
 
+        #3# |Number of iterations to perform bayes optimization: proportional to number of parameters to be inferred
+        iter_ratio = 1 + 0.4*(len(target_params) - 1)
+        init_points = int(7*iter_ratio)     # Number of points for first esimate of function
+        n_iter = int(8*iter_ratio)          # Number of iterations after first estimation to improve estimation
+
         #3# Create a BayesianOptimization optimizer, and optimize the given black_box_function.
         # pbounds = {"lambda_heur": [-15, 15]}    # Set range of lambda to optimize for.
         pbounds = {param_:[heuristic_params_vals[param_].min().item(), heuristic_params_vals[param_].max().item()] 
@@ -229,7 +234,7 @@ def compute_param_likelihoods(
         optimizer = BayesianOptimization(f = get_lambda_likelihood,
                                         pbounds = pbounds, verbose = 0,
                                         random_state = 4)
-        optimizer.maximize(init_points = 7, n_iter = 8)
+        optimizer.maximize(init_points = init_points, n_iter = n_iter)
 
         print("Best result: {}; f(x) = {}.".format(optimizer.max["params"], optimizer.max["target"]))
         # return (optimizer.max["params"]["lambda_heur"].item(), optimizer.max["target"])
@@ -238,7 +243,7 @@ def compute_param_likelihoods(
         # #3# Using skopt BayesianOptimization optimizer.
         # pbounds = [Real(-15,15,name="lambda_heur")]
         # res_gp = gp_minimize(get_lambda_likelihood,
-        #                         pbounds, n_calls = 15,
+        #                         pbounds, n_calls = 15*iter_ratio,
         #                         random_state = 4)
         # print("Best result: {}; f(x) = {}.".format(res_gp.x, res_gp.fun))
 

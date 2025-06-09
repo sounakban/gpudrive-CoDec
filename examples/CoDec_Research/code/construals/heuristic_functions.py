@@ -1,7 +1,7 @@
 # |Higher-level imports
 from examples.CoDec_Research.code.construals.construal_imports import *
 
-
+from sklearn import preprocessing
 
 ### Support Functions ###
 # |Compute eucledian distance between two points
@@ -70,10 +70,11 @@ def get_construal_veh_distance_ego(env: GPUDriveConstrualEnv, construal_indices:
                                                 tuple( all_pos[env_num][i][0].cpu().tolist() )
                                             ) 
                                             for i in range(len(all_pos[env_num]))]
+        all_distances = np.array(all_distances)
               
         if normalize:
-            #2# |Normalize distances to [0,1] using min-max scaling 
-            all_distances = (np.array(all_distances) - np.min(all_distances)) / (np.max(all_distances) - np.min(all_distances))
+            #2# |Normalize distances to [0,1] using min-max scaling
+            all_distances = preprocessing.MinMaxScaler(feature_range=(0,1)).fit_transform(all_distances.reshape(-1,1)).reshape(1,-1)[0]
 
         #2# |Multiplied by -1 as distance is a penalty term, greater values are associated with higher penalty
         all_distances = -1*all_distances 
@@ -131,7 +132,7 @@ def get_construal_dev_ego_heading(env: GPUDriveConstrualEnv, construal_indices: 
               
         if normalize:
             #2# |Normalize heading radians to [0,1] using min-max scaling 
-            heading_dev =  (np.array(heading_dev) - np.min(heading_dev)) / (np.max(heading_dev) - np.min(heading_dev))
+            heading_dev = preprocessing.MinMaxScaler(feature_range=(0,1)).fit_transform(heading_dev.reshape(-1,1)).reshape(1,-1)[0]
             
         #2# |Multiplied by -1 as higher angles mean further away from the ego heading and are less likely to be considered
         heading_dev = -1*heading_dev
@@ -183,11 +184,9 @@ def get_construal_rel_heading_ego(env: GPUDriveConstrualEnv, construal_indices: 
                                             tuple( all_vel[env_num][i][0].cpu().tolist() )
                                         ) 
                                         for i in range(len(all_vel[env_num]))]
+        relative_headings = np.array(relative_headings)
               
-        # TODO: See if commenting out nomalization helps
-        if normalize:
-            #2# |Normalize relative headings to [0,1] using min-max scaling
-            relative_headings = (np.array(relative_headings) - np.min(relative_headings)) / (np.max(relative_headings) - np.min(relative_headings))
+        #2# |Normalization not necessary, as values are computed are already in range -1,1
 
         for curr_indices in info_dict[env_name]['construal_indices']:
             relative_heading_dict[env_name][curr_indices] = [relative_headings[i] for i in curr_indices]
@@ -247,9 +246,11 @@ def get_construal_dev_collision_ego(env: GPUDriveConstrualEnv, construal_indices
         #2# |Value 0 indicates vehicles moving away from each other, 1 indicates vehicles moving directly towards each other
         dev_collision = [abs( dot(unit_vector(vel_vec), unit_vector(dis_vec)) ) for 
                                 vel_vec, dis_vec in zip(relative_vel, relative_dis)]
+        dev_collision = np.array(dev_collision)
 
-        #2# |Normalization not necessary, as values are computed using unitary vectors and results range between 0 and 1
-        # TODO: See rescaling values between 1 and -1 help
+        if normalize:
+            #2# |Normalize values between [-1,1] using min-max scaling 
+            dev_collision = preprocessing.MinMaxScaler(feature_range=(-1,1)).fit_transform(dev_collision.reshape(-1,1)).reshape(1,-1)[0]
 
         for curr_indices in info_dict[env_name]['construal_indices']:
             deviation_collision_dict[env_name][curr_indices] = [dev_collision[i] for i in curr_indices]
