@@ -18,12 +18,12 @@ custom_sampling = lambda range_min, range_max: [i for indx, num_samples in enume
 # |Loop through lambdas
 lambda_heur = ["dev_ego_heading","rel_heading","dev_collission"]
 #2# |Custom sampling
-lambda_val = [custom_sampling(-15,15), custom_sampling(-20,20), custom_sampling(-30,15)]
+# lambda_val = [custom_sampling(-15,15), custom_sampling(-20,20), custom_sampling(-30,15)]
 #2# |OR uniform sampling
-# sample_count = 25
-# lambda_val = [np.random.uniform(-15,15,sample_count), 
-#                                  np.random.uniform(-20,20,sample_count), 
-#                                  np.random.uniform(-30,15,sample_count), ]
+sample_count = 200
+lambda_val = [np.random.uniform(-15,15,sample_count), 
+                np.random.uniform(-20,20,sample_count), 
+                np.random.uniform(-30,15,sample_count), ]
 
 # lambda_val = [[2,],[-2,],[-3,]]     #DEBUG: Test
 
