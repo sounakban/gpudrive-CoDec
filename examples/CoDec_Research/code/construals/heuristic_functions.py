@@ -205,8 +205,10 @@ def get_construal_rel_heading_ego(env: GPUDriveConstrualEnv, construal_indices: 
 def get_construal_dev_collision_ego(env: GPUDriveConstrualEnv, construal_indices: dict, average: bool = True,
                                normalize: bool = False):
     '''
-    Get the deviation from collision course (with ego) $(vel_x - vel_ego).(pos_x - pos_ego)$, dot product of 
+    Get the 'deviation from ego collision' $(vel_x - vel_ego).(pos_x - pos_ego)$, dot product of 
         relative velocity and relative displacement for vehicles in the construal, relative to the ego.
+        This is a measure of how much the straight-line paths of the ego and construal vehicles deviate
+        from the collission trajectory.
 
     Args:
         env: The environment object

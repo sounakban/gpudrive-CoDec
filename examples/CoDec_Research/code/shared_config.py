@@ -65,7 +65,7 @@ server_config = {
                 'dataset_path': 'data/processed/construal/Set1V2/',         # Path to scenario files
                 'construal_size': 1,
                 'num_parallel_envs': 10,
-                'num_parallel_envs_light': 5,                             # Number of parallel environments for memory intensive operations
+                'num_parallel_envs_light': 10,                             # Number of parallel environments for memory intensive operations
                 'total_envs': 10,
                 'device': "'cuda' if torch.cuda.is_available() else 'cpu'",
                 'sample_size_utility': 10,                                # Number of samples per construal to compute behavioral utility of construals
@@ -88,8 +88,8 @@ heuristic_params_vals = {
                         "cardinality": np.linspace(0,10,param_val_sampling_rate),
                         "ego_distance": np.linspace(0,10,param_val_sampling_rate),
                         "dev_ego_heading": np.linspace(-15,15,param_val_sampling_rate), # Working range: -5,5
-                        "rel_heading": np.linspace(-20,20,param_val_sampling_rate),     # Working range: -5, 5
-                        "dev_collission": np.linspace(-30,15,param_val_sampling_rate),  # Working range: -15, 2
+                        "rel_heading": np.linspace(-15,15,param_val_sampling_rate),     # Working range: -5, 5
+                        "dev_collission": np.linspace(-20,20,param_val_sampling_rate),  # Working range: -15, 2
                         }
 
 # |Hueristics values used for generating the synthetic data

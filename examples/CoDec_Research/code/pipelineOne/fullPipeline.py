@@ -22,8 +22,8 @@ lambda_heur = ["dev_ego_heading","rel_heading","dev_collission"]
 #2# |OR uniform sampling
 sample_count = 200
 lambda_val = [np.random.uniform(-15,15,sample_count), 
-                np.random.uniform(-20,20,sample_count), 
-                np.random.uniform(-30,15,sample_count), ]
+                np.random.uniform(-15,15,sample_count), 
+                np.random.uniform(-20,20,sample_count), ]
 
 # lambda_val = [[2,],[-2,],[-3,]]     #DEBUG: Test
 
