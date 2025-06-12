@@ -10,7 +10,7 @@ from examples.CoDec_Research.code.shared_imports import *
 
 # |Function called from scripts to get the configuration currently being used
 def get_active_config():
-    active_config = server_config
+    active_config = local_config_2
     active_config.update(shared_config)  # Update with shared config parameters
     return active_config
 
@@ -68,7 +68,7 @@ server_config = {
                 'num_parallel_envs_light': 10,                             # Number of parallel environments for memory intensive operations
                 'total_envs': 10,
                 'device': "'cuda' if torch.cuda.is_available() else 'cpu'",
-                'sample_size_utility': 10,                                # Number of samples per construal to compute behavioral utility of construals
+                'sample_size_utility': 40,                                # Number of samples per construal to compute behavioral utility of construals
                 'construal_count_baseline': 8,                            # Number of construals to sample (per scene) for baseline data generation
                 'trajectory_count_baseline': 1,                           # Number of baseline trajectories to generate per construal
                 }

@@ -20,7 +20,7 @@ lambda_heur = ["dev_ego_heading","rel_heading","dev_collission"]
 #2# |Custom sampling
 # lambda_val = [custom_sampling(-15,15), custom_sampling(-20,20), custom_sampling(-30,15)]
 #2# |OR uniform sampling
-sample_count = 200
+sample_count = 10
 lambda_val = [np.random.uniform(-15,15,sample_count), 
                 np.random.uniform(-15,15,sample_count), 
                 np.random.uniform(-20,20,sample_count), ]
@@ -33,10 +33,10 @@ lambda_heur = [lambda_heur]*len(lambda_val)         # Change list structure for 
 for type_, val_ in zip(lambda_heur,lambda_val):
     val_ = ','.join([str(i) for i in val_])     # Pass argument as string of comma-spearated values
     type_ = ','.join(type_)                     # Pass argument as string of comma-spearated values
-    os.system("python examples/CoDec_Research/code/pipelineOne/exp1_P1_GenMasks.py {} {}".format(type_, val_))
-    os.system("python examples/CoDec_Research/code/pipelineOne/exp1_P2_GetVals.py {} {}".format(type_, val_))
-    os.system("python examples/CoDec_Research/code/pipelineOne/exp1_P3_GenData.py {} {}".format(type_, val_))
-    os.system("python examples/CoDec_Research/code/pipelineOne/exp1_P4_Inference.py {} {}".format(type_, val_))
+    os.system("python examples/CoDec_Research/code/Experiment_1/exp1_P1_GenMasks.py {} {}".format(type_, val_))
+    os.system("python examples/CoDec_Research/code/Experiment_1/exp1_P2_GetVals.py {} {}".format(type_, val_))
+    os.system("python examples/CoDec_Research/code/Experiment_1/exp1_P3_GenData.py {} {}".format(type_, val_))
+    os.system("python examples/CoDec_Research/code/Experiment_1/exp1_P4_Inference.py {} {}".format(type_, val_))
 
 
 # |Print the execution time

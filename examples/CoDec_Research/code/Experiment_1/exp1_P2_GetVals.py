@@ -18,7 +18,7 @@ os.chdir(working_dir)
 sys.path.append(str(working_dir))
 
 # # |Import everything
-from examples.CoDec_Research.code.pipelineOne.exp1_imports import *
+from examples.CoDec_Research.code.Experiment_1.exp1_imports import *
 
 
 
@@ -183,7 +183,7 @@ if __name__ == "__main__":
 
     ##### Set Up Environments #####
     
-    from examples.CoDec_Research.code.pipelineOne.exp1_config import *
+    from examples.CoDec_Research.code.Experiment_1.exp1_config import *
 
     if len(sys.argv) > 1:
         # |If calling code with arguments

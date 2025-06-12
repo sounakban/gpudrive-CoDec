@@ -19,7 +19,7 @@ os.chdir(working_dir)
 sys.path.append(str(working_dir))
 
 # |Import everything
-from examples.CoDec_Research.code.pipelineOne.exp1_imports import *
+from examples.CoDec_Research.code.Experiment_1.exp1_imports import *
 
 
 
@@ -32,7 +32,7 @@ from examples.CoDec_Research.code.pipelineOne.exp1_imports import *
 
 
 
-def compute_constual_likelihoods(
+def compute_construal_likelihoods(
                                     train_loader: SceneDataLoader,
                                     out_dir: str,
                                     processID: str,
@@ -273,7 +273,7 @@ if __name__ == "__main__":
 
     ##### Set Up Environments #####
     
-    from examples.CoDec_Research.code.pipelineOne.exp1_config import *
+    from examples.CoDec_Research.code.Experiment_1.exp1_config import *
 
     if len(sys.argv) > 1:
         # |If calling code with arguments
@@ -315,7 +315,7 @@ if __name__ == "__main__":
 
     start_time = time.perf_counter()
 
-    construal_action_likelihoods_df = compute_constual_likelihoods(
+    construal_action_likelihoods_df = compute_construal_likelihoods(
                                                                     train_loader= train_loader,
                                                                     out_dir= intermediate_results_path,
                                                                     processID= processID,

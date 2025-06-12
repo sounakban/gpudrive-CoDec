@@ -72,5 +72,7 @@ dependencies:
       - huggingface_hub==0.30.1
       - jaxlib==0.5.3
       - bayesian-optimization==2.0.4
+      - scikit-learn==1.6.1
+      - scikit-optimize==0.10.2
       - pytorch-lightning
       - git+https://github.com/waymo-research/waymax.git@main#egg=waymo-waymax
