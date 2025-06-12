@@ -20,7 +20,7 @@ lambda_heur = ["dev_ego_heading","rel_heading","dev_collission"]
 #2# |Custom sampling
 # lambda_val = [custom_sampling(-15,15), custom_sampling(-20,20), custom_sampling(-30,15)]
 #2# |OR uniform sampling
-sample_count = 10
+sample_count = 400
 lambda_val = [np.random.uniform(-15,15,sample_count), 
                 np.random.uniform(-15,15,sample_count), 
                 np.random.uniform(-20,20,sample_count), ]

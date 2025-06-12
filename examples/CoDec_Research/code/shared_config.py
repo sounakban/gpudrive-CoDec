@@ -10,7 +10,7 @@ from examples.CoDec_Research.code.shared_imports import *
 
 # |Function called from scripts to get the configuration currently being used
 def get_active_config():
-    active_config = local_config_2
+    active_config = server_config
     active_config.update(shared_config)  # Update with shared config parameters
     return active_config
 
