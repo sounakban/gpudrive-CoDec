@@ -9,7 +9,7 @@ import math
 start_time = time.perf_counter()
 
 
-# |Custom sampling function, ensuring more uniform sampling
+# |Custom sampling function, ensuring more uniform sampling for smaller sample-sizes (<50)
 sample_range = (5,11)       # Number of samples to consider for each iteration, generates sum(range(sample_range)) samples
 custom_sampling = lambda range_min, range_max: [i for indx, num_samples in enumerate(range(*sample_range)) 
                                                     for i in np.linspace(range_min+(indx*0.2),range_max-(indx*0.2),num_samples)]
@@ -20,7 +20,7 @@ lambda_heur = ["dev_ego_heading","rel_heading","dev_collission"]
 #2# |Custom sampling
 # lambda_val = [custom_sampling(-15,15), custom_sampling(-20,20), custom_sampling(-30,15)]
 #2# |OR uniform sampling
-sample_count = 400
+sample_count = 100
 lambda_val = [np.random.uniform(-15,15,sample_count), 
                 np.random.uniform(-15,15,sample_count), 
                 np.random.uniform(-20,20,sample_count), ]

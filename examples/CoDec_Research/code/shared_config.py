@@ -69,7 +69,7 @@ server_config = {
                 'total_envs': 10,
                 'device': "'cuda' if torch.cuda.is_available() else 'cpu'",
                 'sample_size_utility': 40,                                # Number of samples per construal to compute behavioral utility of construals
-                'construal_count_baseline': 8,                            # Number of construals to sample (per scene) for baseline data generation
+                'construal_count_baseline': 1,                            # Number of construals to sample (per scene) for baseline data generation
                 'trajectory_count_baseline': 1,                           # Number of baseline trajectories to generate per construal
                 }
 

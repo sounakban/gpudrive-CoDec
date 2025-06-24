@@ -7,7 +7,7 @@ An extremely fast, data-driven driving simulator written in C++.
 
 This fork of the original GPUDrive codebase contains research code written by Sounak Banerjee from the CoDec Laboratory headed by Prof Mark Ho, at New York University. The research is funded by Toyota Research Institute, and is done in collaboration with Deepak Gopinath from TRI. The research-specific code lives in the examples/CoDec_Research/[code](./examples/CoDec_Research/code/) directory. Please see [README](./examples/CoDec_Research/README.md) file in examples/CoDec_Research for further details.
 
-In addition, some modification were made to the simulator code itself to support certain functionalities necessary for the research.
+In addition, some modifications were made to the simulator code to implement functionalities necessary for the research.
 
 ## Highlights
 
