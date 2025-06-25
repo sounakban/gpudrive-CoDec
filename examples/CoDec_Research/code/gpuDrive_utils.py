@@ -83,7 +83,8 @@ def get_mov_veh_masks(
                       dataset_path: str,
                       max_agents: int,
                       result_file_loc: str,
-                      processID: str
+                      processID: str,
+                      save_data = True,
                     ) -> dict:
     
     # |Set total_envs and num_parallel_envs
@@ -152,9 +153,10 @@ def get_mov_veh_masks(
         del env_multi_agent
 
         # |Save resuts to file
-        savefl_path = result_file_loc+processID+'_'+"movVeh_masks_"+str(datetime.now())+".pickle"
-        with open(savefl_path, 'wb') as file:
-            pickle.dump(moving_veh_masks, file, protocol=pickle.HIGHEST_PROTOCOL)
+        if save_data:
+            savefl_path = result_file_loc+processID+'_'+"movVeh_masks_"+str(datetime.now())+".pickle"
+            with open(savefl_path, 'wb') as file:
+                pickle.dump(moving_veh_masks, file, protocol=pickle.HIGHEST_PROTOCOL)
 
     return moving_veh_masks
 

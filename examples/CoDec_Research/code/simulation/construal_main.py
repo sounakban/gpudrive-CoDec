@@ -250,7 +250,7 @@ def get_constral_heurisrtic_values(env: GPUDriveConstrualEnv, train_loader: Scen
                                    default_values: dict, heuristic_params: dict = None, 
                                    average: bool = True,  normalize:bool = True) -> dict:
     '''
-    Get the construal values based on some heuristic on average or for each vehicle in the construal
+    Get the construal values based on one or more heuristic(s), on average or for each vehicle in the construal
 
     Args:
         env: The environment object

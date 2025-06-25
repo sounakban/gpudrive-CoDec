@@ -56,7 +56,10 @@ def get_construal_veh_distance_ego(env: GPUDriveConstrualEnv, construal_indices:
     info_dict = dict()
     for env_num, env_name in enumerate(curr_data_batch):
         info_dict[env_name] = dict()
-        info_dict[env_name]['ego_index'] = torch.where(env.cont_agent_mask[env_num])[0].item()
+        try:
+            info_dict[env_name]['ego_index'] = torch.where(env.cont_agent_mask[env_num])[0].item()
+        except RuntimeError:
+            raise RuntimeError("Environment has more than one ego vehicle.")
         info_dict[env_name]['construal_indices'] = construal_indices[env_name]
     
     # |Get all vehicle distances
