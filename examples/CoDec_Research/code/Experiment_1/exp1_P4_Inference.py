@@ -20,6 +20,7 @@ sys.path.append(str(working_dir))
 
 # |Import everything
 from examples.CoDec_Research.code.Experiment_1.exp1_imports import *
+from examples.CoDec_Research.code.Experiment_1.exp1_config import *
 
 
 
@@ -338,15 +339,28 @@ if __name__ == "__main__":
 
     ##### Write result out to file #####
     if not result is None:
-        # |Result is none when distribution of lambda is calculated
-        fileExists = True if os.path.isfile(intermediate_results_path+processID+"_results.tsv") else False
-        with open(intermediate_results_path+processID+"_results.tsv", "a") as resultFile:
+        # |Result is none when distribution of lambda is calculated   
+
+        ### LOGIC 1 ###
+        sample_count = server_config["construal_count_baseline"]
+        resultsFlPath = intermediate_results_path+processID+f"_results_{sample_count}samples.tsv"
+        fileExists = True if os.path.isfile(resultsFlPath) else False
+        with open(resultsFlPath, "a") as resultFile:
             if not fileExists:
                 resultFile.write('\t'.join(['parameter', 'lambda_true', 'lambda_predicted\n']))
             for param_ in target_param:
                 resultFile.write( '\t'.join([param_, str(active_heuristic_params[param_]), str(result[0][param_])])+'\n' )
-    
 
+        ### LOGIC 2 ###
+        # i = 1 # Existing results file count
+        # while os.path.isfile(intermediate_results_path+processID+f"_results{i}.tsv"):
+        #     i += 1
+        # resultsFlPath = intermediate_results_path+processID+f"_results{i}.tsv"
+        # with open(resultsFlPath, "a") as resultFile:
+        #     resultFile.write('\t'.join(['parameter', 'lambda_true', 'lambda_predicted\n']))
+        #     for param_ in target_param:
+        #         resultFile.write( '\t'.join([param_, str(active_heuristic_params[param_]), str(result[0][param_])])+'\n' )
+    
     ##### Delete intermediate files #####
     intermediate_results_files = [intermediate_results_path+fl_name for fl_name in listdir(intermediate_results_path)]  # Rerun it to include files created by this script
     files2delete = [currFile for currFile in intermediate_results_files if any(kwrd in currFile for kwrd in keywords2delete)]
@@ -357,8 +371,6 @@ if __name__ == "__main__":
             raise FileNotFoundError(f"Error: File '{delFile}' not found.")
         except OSError as e:
             raise OSError(f"Error: {e}")
-
-
 
     env.close()
 
