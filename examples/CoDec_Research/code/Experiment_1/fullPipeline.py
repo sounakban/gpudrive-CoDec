@@ -18,7 +18,7 @@ custom_sampling = lambda range_min, range_max: [i for indx, num_samples in enume
                                                     for i in np.linspace(range_min+(indx*0.2),range_max-(indx*0.2),num_samples)]
 
 
-# |Loop through lambdas
+# |Define lambdas to loop through
 lambda_heur = ["dev_ego_heading","rel_heading","dev_collission"]
 # lambda_val = [[2,],[-2,],[-3,]]     #DEBUG: Test
 #2# |Custom sampling
@@ -48,8 +48,8 @@ with open("examples/CoDec_Research/code/Experiment_1/sampleLambdas.pkl", 'rb') a
 ### LOGIC 2: Iterating over different sample sizes (for trajectories). Useful for sample-size efficiency test ###
 lambda_val = list(zip(*lambda_val))                 # Change list structure for code compatibility
 lambda_heur = [lambda_heur]*len(lambda_val)         # Change list structure for code compatibility
-# sampleSize_list = list(range(1, 11))+list(range(15,51,5))
-sampleSize_list = list(range(30,51,5))
+# sampleSize_list = list(range(1, 10))+list(range(10,51,5))
+sampleSize_list = list(range(2,3,1))
 for traj_samples_ in sampleSize_list:
     # Update sample size in config file
     #2# Read in the file

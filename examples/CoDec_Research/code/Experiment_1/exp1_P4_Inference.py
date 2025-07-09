@@ -341,17 +341,20 @@ if __name__ == "__main__":
     if not result is None:
         # |Result is none when distribution of lambda is calculated   
 
-        ### LOGIC 1 ###
+        ### LOGIC 1: Keep sample-size information in saved file ###
         sample_count = server_config["construal_count_baseline"]
         resultsFlPath = intermediate_results_path+processID+f"_results_{sample_count}samples.tsv"
         fileExists = True if os.path.isfile(resultsFlPath) else False
         with open(resultsFlPath, "a") as resultFile:
             if not fileExists:
-                resultFile.write('\t'.join(['parameter', 'lambda_true', 'lambda_predicted\n']))
+                resultFile.write('\t'.join(['parameter', 'lambda_true', 'lambda_predicted', 'log_likelihood\n']))
             for param_ in target_param:
-                resultFile.write( '\t'.join([param_, str(active_heuristic_params[param_]), str(result[0][param_])])+'\n' )
+                resultFile.write( '\t'.join([param_, str(active_heuristic_params[param_]), 
+                                             str(result[0][param_]), str(result[1])]
+                                            )+'\n' 
+                                )
 
-        ### LOGIC 2 ###
+        ### LOGIC 2: Ignore sample-size information in saved file ###
         # i = 1 # Existing results file count
         # while os.path.isfile(intermediate_results_path+processID+f"_results{i}.tsv"):
         #     i += 1
