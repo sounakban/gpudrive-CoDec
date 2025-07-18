@@ -49,7 +49,7 @@ with open("examples/CoDec_Research/code/Experiment_1/sampleLambdas.pkl", 'rb') a
 lambda_val = list(zip(*lambda_val))                 # Change list structure for code compatibility
 lambda_heur = [lambda_heur]*len(lambda_val)         # Change list structure for code compatibility
 # sampleSize_list = list(range(1, 10))+list(range(10,51,5))
-sampleSize_list = list(range(30,51,5))
+sampleSize_list = list(range(45,51,5))
 for traj_samples_ in sampleSize_list:
     # Update sample size in config file
     #2# Read in the file
