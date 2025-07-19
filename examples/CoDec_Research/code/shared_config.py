@@ -65,7 +65,7 @@ server_config = {
                 'dataset_path': 'data/processed/construal/Set1V2/',         # Path to scenario files
                 'construal_size': 1,
                 'num_parallel_envs': 10,
-                'num_parallel_envs_light': 10,                             # Number of parallel environments for memory intensive operations
+                'num_parallel_envs_light': 5,                             # Number of parallel environments for memory intensive operations
                 'total_envs': 10,
                 'device': "'cuda' if torch.cuda.is_available() else 'cpu'",
                 'sample_size_utility': 40,                                # Number of samples per construal to compute behavioral utility of construals
