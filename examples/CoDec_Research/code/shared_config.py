@@ -40,7 +40,7 @@ local_config = {
                 'total_envs': 3,
                 'device': "'cpu'",
                 'sample_size_utility': 1,                                 # Number of samples per construal to compute behavioral utility of construals
-                'construal_count_baseline': 2,                            # Number of construals to sample (per scene) for baseline data generation
+                'construal_count_baseline': 4,                            # Number of construals to sample (per scene) for baseline data generation
                 'trajectory_count_baseline': 1,                           # Number of baseline trajectories to generate per construal
                 }
 
@@ -53,8 +53,8 @@ local_config_2= {# |run inference on baseline data already generated on the serv
                 'num_parallel_envs_light': 5,                             # Number of parallel environments for memory intensive operations
                 'total_envs': 10,
                 'device': "'cpu'",
-                'sample_size_utility': 1,                                 # Number of samples per construal to compute behavioral utility of construals
-                'construal_count_baseline': 6,                            # Number of construals to sample (per scene) for baseline data generation
+                'sample_size_utility': 4,                                 # Number of samples per construal to compute behavioral utility of construals
+                'construal_count_baseline': 8,                            # Number of construals to sample (per scene) for baseline data generation
                 'trajectory_count_baseline': 1,                           # Number of baseline trajectories to generate per construal
                 }
 
@@ -68,7 +68,7 @@ server_config = {
                 'num_parallel_envs_light': 5,                             # Number of parallel environments for memory intensive operations
                 'total_envs': 10,
                 'device': "'cuda' if torch.cuda.is_available() else 'cpu'",
-                'sample_size_utility': 40,                                # Number of samples per construal to compute behavioral utility of construals
+                'sample_size_utility': 5,                                # Number of samples per construal to compute behavioral utility of construals
                 'construal_count_baseline': 2,                            # Number of construals to sample (per scene) for baseline data generation
                 'trajectory_count_baseline': 1,                           # Number of baseline trajectories to generate per construal
                 }
