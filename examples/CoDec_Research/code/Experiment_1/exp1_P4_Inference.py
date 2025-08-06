@@ -342,7 +342,7 @@ if __name__ == "__main__":
         # |Result is none when distribution of lambda is calculated   
 
         ### LOGIC 1: Keep sample-size information in saved file ###
-        sample_count = server_config["construal_count_baseline"]
+        sample_count = GPU_config["construal_count_baseline"]
         resultsFlPath = intermediate_results_path+processID+f"_results_{sample_count}samples.tsv"
         fileExists = True if os.path.isfile(resultsFlPath) else False
         with open(resultsFlPath, "a") as resultFile:

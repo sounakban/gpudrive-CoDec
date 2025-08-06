@@ -288,12 +288,13 @@ def simulate_policies(env: GPUDriveConstrualEnv,
                 if save_state_action_pairs:
                     for scene_num, action_dist in enumerate(action_logits):
                         scene_name = curr_data_batch[scene_num]
+                        curr_obs_ = tuple(tmp_.to('cpu') for tmp_ in raw_obs[scene_num])
                         if const_num == -1:
                             # |Generalist policy
-                            state_action_pairs[scene_name][moving_veh_indices[scene_num]][sample_num].append((raw_obs[scene_num], action_dist))
+                            state_action_pairs[scene_name][moving_veh_indices[scene_num]][sample_num].append((curr_obs_, action_dist.to('cpu')))
                         else:
                             # |Construal policy
-                            state_action_pairs[scene_name][mask_indices[scene_num]][sample_num].append((raw_obs[scene_num], action_dist))
+                            state_action_pairs[scene_name][mask_indices[scene_num]][sample_num].append((curr_obs_, action_dist.to('cpu')))
 
                 #3# |Record observations
                 if save_trajectory_obs:

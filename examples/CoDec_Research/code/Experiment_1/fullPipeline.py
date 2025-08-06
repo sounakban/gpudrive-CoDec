@@ -7,6 +7,9 @@ import math
 import pickle
 import re
 
+# |Prevent GPUDrive from compiling every time, on GPU
+os.system("export MADRONA_MWGPU_KERNEL_CACHE=./gpudrive_cache")
+
 
 
 start_time = time.perf_counter()
@@ -43,22 +46,22 @@ lambda_val = [np.random.uniform(-15,15,sample_count),
 #     lambda_val = pickle.load(file)
 
 
-### LOGIC 1: Using a single sample size (for trajectories) ###
+### LOGIC 1: Using a single sample size (for different lambdas and trajectories) ###
 lambda_val = list(zip(*lambda_val))                 # Change list structure for code compatibility
 lambda_heur = [lambda_heur]*len(lambda_val)         # Change list structure for code compatibility
 for type_, val_ in zip(lambda_heur,lambda_val):
     val_ = ','.join([str(i) for i in val_])     # Pass argument as string of comma-spearated values
     type_ = ','.join(type_)                     # Pass argument as string of comma-spearated values
-    print("--------------------------- Generating Masks ---------------------------")
+    print("\n--------------------------- Generating Masks ---------------------------\n")
     os.system("python examples/CoDec_Research/code/Experiment_1/exp1_P1_GenMasks.py {} {}".format(type_, val_))
     lastExec_time = print_execTime(start_time, "Mask generation")
-    print("--------------------------- Computing Values ---------------------------")
+    print("\n--------------------------- Computing Values and Sampling Construals---------------------------\n")
     os.system("python examples/CoDec_Research/code/Experiment_1/exp1_P2_GetVals.py {} {}".format(type_, val_))
     lastExec_time = print_execTime(lastExec_time, "Value computation")
-    print("--------------------------- Generating Synthetic Data ---------------------------")
+    print("\n--------------------------- Generating Synthetic Data ---------------------------\n")
     os.system("python examples/CoDec_Research/code/Experiment_1/exp1_P3_GenData.py {} {}".format(type_, val_))
     lastExec_time = print_execTime(lastExec_time, "Data generation")
-    print("--------------------------- Performing Inference ---------------------------")
+    print("\n--------------------------- Performing Inference ---------------------------\n")
     os.system("python examples/CoDec_Research/code/Experiment_1/exp1_P4_Inference.py {} {}".format(type_, val_))
     lastExec_time = print_execTime(lastExec_time, "Inference Logic")
 

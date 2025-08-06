@@ -1,0 +1,87 @@
+
+# Maybe necessary on some systems [Only use if getting errors]
+sudo apt-get install xorg-dev libglu1-mesa-dev
+
+
+######################
+# PROCESS 1 [TESTED] #
+######################
+
+>>> Set up cuda and cmake inside python environment [May ignore if cuda_environment.yml was used] <<<
+conda activate gpudrive
+pip install --upgrade pip
+conda install -y -c nvidia cuda-toolkit=12.2.2 cudnn=8.9.2
+conda install -y conda-forge::cmake-build-extension
+conda install anaconda::libnvjitlink
+
+
+>>> Compile and set up GPUDrive <<<
+mkdir build
+cd build
+cmake .. -D CMAKE_BUILD_TYPE=Release CUDAToolkit_BIN_DIR:PATH="/home/<user>/anaconda3/envs/gpudrive/bin" CUDA_NVJITLINK_LIBRARY:FILEPATH="/home/<user>/anaconda3/envs/gpudrive/lib/libnvJitLink.so"
+make -j 10
+cd ..
+pip install -e .
+
+
+>>> Install libraries [May ignore if cuda_environment.yml was used] <<<
+pip install git+https://github.com/waymo-research/waymax.git@main#egg=waymo-waymax
+pip install python-box scipy tqdm pandas PyYAML pufferlib huggingface_hub pytorch_lightning jax==0.5.3 jaxlib==0.5.3 scikit-learn bayesian-optimization==3.1.0 scikit-optimize==0.10.2
+#-----------------------------------------------------------------#
+# Experimental (should be generally ignored):
+pip install --upgrade "jax[cuda12]==0.5.3"
+pip3 install torch torchvision torchaudio
+#-----------------------------------------------------------------#
+
+
+
+
+
+############################
+# PROCESS 2 [EXPERIMENTAL] #
+############################
+
+>>> Set up cuda and cmake inside python environment <<<
+conda create -n cuda12_env python=3.12 -c nvidia/label/cuda-12.2.2
+conda install -y cuda cuda-runtime cuda-cudart cuda-cudart-dev cuda-toolkit cuda-nvcc libcublas libnvjpeg libnvjitlink -c nvidia/label/cuda-12.2.2
+# install cuda runtime, toolkit, nvcc
+conda install -y nvidia/label/cuda-12.2.2::cuda
+conda install -y nvidia/label/cuda-12.2.2::cuda-cudart
+
+
+>>> Compile and install GPUDrive <<<
+Follow instructions from main readme
+
+
+>>> Install libraries <<<
+pip install git+https://github.com/waymo-research/waymax.git@main#egg=waymo-waymax
+pip install python-box scipy tqdm pandas PyYAML pufferlib huggingface_hub pytorch_lightning jax==0.5.3 jaxlib==0.5.3 scikit-learn bayesian-optimization==3.1.0 scikit-optimize==0.10.2
+#-----------------------------------------------------------------#
+# Experimental (should be generally ignored):
+pip install --upgrade "jax[cuda12]==0.5.3"
+pip3 install torch torchvision torchaudio
+#-----------------------------------------------------------------#
+
+
+
+
+#########################
+# OTHER USEFUL COMMANDS #
+#########################
+
+# Find path for CUDA files in anaconda environment
+sudo find / -name nvcc
+
+
+
+
+###################
+# DEPRICATED CODE #
+###################
+
+export PATH="/home/sb10438/anaconda3/envs/gpudrive/bin:$PATH"
+export LD_LIBRARY_PATH="/home/sb10438/anaconda3/envs/gpudrive/lib:$LD_LIBRARY_PATH"
+#-----------------------------------------------------------------#
+cmake .. -D CMAKE_BUILD_TYPE=Release CUDAToolkit_ROOT="/home/sb10438/anaconda3/envs/gpudrive/bin" CUDA_TOOLKIT_ROOT_DIR=/home/sb10438/anaconda3/envs/gpudrive/ CMAKE_CUDA_COMPILER:FILEPATH="/home/sb10438/anaconda3/envs/gpudrive/bin/nvcc"
+#-----------------------------------------------------------------#
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128

@@ -138,7 +138,8 @@ def evaluate_construals(baseline_data: Dict,
                     pred_action_dist = None
                     print(f"\rProcessing baseline construal {baseline_constr_indxs} against construal {test_construal_indices}, sample {sample_num+1}", end="")
                     for timestep, (raw_state, true_action_logits) in enumerate(sample):
-                        next_obs = process_state(raw_state, test_construal_mask, timestep)
+                        true_action_logits = true_action_logits.to(device)
+                        next_obs = process_state(raw_state, test_construal_mask, timestep).to(device)
                         # if timestep == 0:
                         #     #|DEBUG LOGIC
                         #     if prev_obs is not None:
